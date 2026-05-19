@@ -344,7 +344,16 @@ def dashboard_roi_data():
     """Return a Plotly bar chart of median ROI by genre."""
     data = get_roi_by_genre()
 
+    if not data:
+        return app.response_class(
+            json.dumps({}), mimetype="application/json"
+        )
+
     colors = ["#f5c518" if d["roi"] >= 0 else "#e05c5c" for d in data]
+
+    all_rois = [d["roi"] for d in data]
+    y_min = min(min(all_rois) * 1.25, 0)
+    y_max = max(max(all_rois) * 1.25, 0)
 
     fig = go.Figure(data=go.Bar(
         x=[d["genre"] for d in data],
@@ -366,7 +375,7 @@ def dashboard_roi_data():
         xaxis=dict(title="Genre", gridcolor="#333", zeroline=False),
         yaxis=dict(title="Median ROI (%)", gridcolor="#333", zeroline=True,
                    zerolinecolor="#555", zerolinewidth=1,
-                   range=[0, max(d["roi"] for d in data) * 1.25]),
+                   range=[y_min, y_max]),
         margin=dict(l=60, r=20, t=80, b=80),
         showlegend=False,
     )
