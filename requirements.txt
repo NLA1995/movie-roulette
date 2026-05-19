@@ -1,0 +1,10 @@
+cs50
+python-dotenv
+Flask
+Flask-Session
+requests
+Werkzeug
+plotly
+gunicorn
+# Only needed to refresh movies.db from IMDb dumps (update_movies_db.py)
+pandas

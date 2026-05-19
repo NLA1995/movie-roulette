@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, width=device-width">
+    <link crossorigin="anonymous" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" rel="stylesheet">
+    <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"></script>
+    <!-- Fuente única para toda la app -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="/static/favicon.ico" rel="icon">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <title>Movie Roulette — {% block title %}{% endblock %}</title>
+    <style>
+        /* Fuente global */
+        *, body { font-family: 'Inter', sans-serif; }
+
+        body { background-color: #141414; color: white; }
+
+        /* Navbar */
+        .navbar-brand {
+            font-family: 'Inter', sans-serif;
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: white !important;
+            letter-spacing: -0.3px;
+        }
+        .nav-link {
+            font-weight: 600;
+            display: flex; align-items: center; gap: 7px;
+        }
+        .nav-link:hover { color: #f5c518 !important; }
+        .nav-link svg { width: 16px; height: 16px; stroke-width: 2; }
+        .navbar-brand { display: flex; align-items: center; gap: 8px; transition: color 0.2s; }
+        .navbar-brand:hover { color: #f5c518 !important; }
+        .navbar-brand svg { width: 20px; height: 20px; stroke: #f5c518; stroke-width: 2; }
+
+        /* Search bar */
+        .search-form input {
+            background-color: #2a2a2a; border: 1px solid #444;
+            color: white; border-radius: 6px 0 0 6px; width: 200px;
+            font-family: 'Inter', sans-serif;
+        }
+        .search-form input::placeholder { color: #888; }
+        .search-form input:focus {
+            background-color: #2a2a2a; color: white;
+            border-color: #f5c518; box-shadow: none;
+        }
+        .search-form button {
+            background-color: #f5c518; border: none;
+            color: black; font-weight: 700;
+            border-radius: 0 6px 6px 0;
+            font-family: 'Inter', sans-serif;
+        }
+        .search-form button:hover { background-color: #d4a900; }
+
+        /* Footer */
+        footer { font-family: 'Inter', sans-serif; }
+        footer a { color: #f5c518; text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Headings globales */
+        h1 { font-weight: 800; font-size: 2rem; }
+        h3 { font-weight: 700; }
+
+        /* Google Translate — ocultar banner y widget por defecto */
+        .goog-te-banner-frame, .skiptranslate { display: none !important; }
+        body { top: 0 !important; }
+        .goog-te-gadget { display: none !important; }
+
+        /* Botón EN/ES */
+        .lang-toggle {
+            display: flex; align-items: center; gap: 6px;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #aaa; font-size: 12px; font-weight: 700;
+            padding: 5px 12px; border-radius: 6px;
+            cursor: pointer; transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.5px;
+        }
+        .lang-toggle:hover { border-color: #f5c518; color: #f5c518; }
+        .lang-toggle.active { border-color: #f5c518; color: #f5c518; background: rgba(245,197,24,0.08); }
+    </style>
+</head>
+<body>
+    <nav class="bg-dark border navbar navbar-expand-md navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/"><i data-lucide="shuffle"></i> Movie Roulette</a>
+            <button aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation"
+                    class="navbar-toggler" data-bs-target="#navbar" data-bs-toggle="collapse" type="button">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbar">
+                {% if session["user_id"] %}
+                    <ul class="navbar-nav me-auto mt-2">
+                        <li class="nav-item"><a class="nav-link text-white" href="/recomendations"><i data-lucide="clapperboard"></i> Movies</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="/tvshows"><i data-lucide="tv-2"></i> TV Shows</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="/trending"><i data-lucide="flame"></i> Trending</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="/news"><i data-lucide="newspaper"></i> News</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="/dashboard"><i data-lucide="bar-chart-2"></i> Dashboards</a></li>
+                    </ul>
+                    <form class="search-form d-flex mx-3 mt-2" action="/search" method="POST">
+                        <input name="query" type="text" placeholder="Search a movie or TV show...">
+                        <button type="submit"><i data-lucide="search" style="width:14px;height:14px;stroke:black;stroke-width:2.5"></i></button>
+                    </form>
+                    <ul class="navbar-nav ms-auto mt-2 align-items-center">
+                        <li class="nav-item me-2">
+                            <button class="lang-toggle" id="langBtn" onclick="toggleLang()">
+                                <i data-lucide="languages" style="width:14px;height:14px;"></i>
+                                <span id="langLabel">ES</span>
+                            </button>
+                        </li>
+                        <li class="nav-item"><a class="nav-link text-white" href="/logout">Log Out</a></li>
+                    </ul>
+                {% else %}
+                    <ul class="navbar-nav ms-auto mt-2">
+                        <li class="nav-item"><a class="nav-link text-white" href="/register">Register</a></li>
+                        <li class="nav-item"><a class="nav-link text-white" href="/login">Log In</a></li>
+                    </ul>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    {% if get_flashed_messages() %}
+        <header>
+            <div class="alert alert-warning mb-0 text-center" role="alert">
+                {{ get_flashed_messages() | join(" ") }}
+            </div>
+        </header>
+    {% endif %}
+
+    <main class="container-fluid py-5 text-center">
+        {% block main %}{% endblock %}
+    </main>
+
+    <footer class="mb-5 small text-center text-muted">
+        Data provided by
+        <a href="https://www.imdb.com/" target="_blank">IMDb</a> &amp;
+        <a href="https://www.themoviedb.org/" target="_blank">TMDB</a>
+    </footer>
+    <script>lucide.createIcons();</script>
+
+    <!-- Google Translate (oculto) -->
+    <div id="google_translate_element" style="display:none;"></div>
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'en',
+                includedLanguages: 'es',
+                autoDisplay: false
+            }, 'google_translate_element');
+        }
+
+        function toggleLang() {
+            const btn   = document.getElementById('langBtn');
+            const label = document.getElementById('langLabel');
+            const isES  = label.textContent === 'ES';
+
+            if (isES) {
+                // Traducir a español
+                const select = document.querySelector('.goog-te-combo');
+                if (select) {
+                    select.value = 'es';
+                    select.dispatchEvent(new Event('change'));
+                }
+                label.textContent = 'EN';
+                btn.classList.add('active');
+            } else {
+                // Volver a inglés: borrar cookie de Google Translate y recargar
+                document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=' + window.location.hostname;
+                window.location.reload();
+            }
+        }
+    </script>
+    <script type="text/javascript"
+        src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit">
+    </script>
+</body>
+</html>

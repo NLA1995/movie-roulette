@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script src="https://unpkg.com/lucide@latest"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  body { background: #141414; color: white; font-family: 'Inter', sans-serif; margin: 0; padding: 40px 20px; }
+
+  /* ── Navbar simulado ── */
+  nav {
+    background: #1a1a1a;
+    border-bottom: 1px solid #2a2a2a;
+    padding: 12px 28px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    border-radius: 10px;
+    margin-bottom: 48px;
+  }
+  .brand {
+    font-weight: 800;
+    font-size: 1.15rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #f5c518;
+  }
+  .nav-links { display: flex; gap: 4px; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ccc;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    text-decoration: none;
+  }
+  .nav-item:hover { background: rgba(245,197,24,0.1); color: #f5c518; }
+  .nav-item svg { width: 16px; height: 16px; stroke-width: 2; }
+
+  /* ── Opciones de iconos ── */
+  h2 { font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #f5c518; margin: 40px 0 20px; }
+  .options { display: flex; flex-wrap: wrap; gap: 12px; }
+  .option-card {
+    background: #1c1c1c;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ccc;
+    min-width: 160px;
+  }
+  .option-card svg { width: 20px; height: 20px; stroke: #f5c518; stroke-width: 1.8; }
+  .option-card span.tag { font-size: 10px; color: #555; font-weight: 400; margin-left: auto; }
+
+  hr { border-color: #222; margin: 40px 0; }
+</style>
+</head>
+<body>
+
+<h2>Vista previa del navbar con iconos Lucide</h2>
+
+<!-- Navbar simulado -->
+<nav>
+  <div class="brand">
+    <i data-lucide="film" style="width:20px;height:20px;stroke:#f5c518"></i>
+    Movie Roulette
+  </div>
+  <div class="nav-links">
+    <a class="nav-item"><i data-lucide="clapperboard"></i> Movies</a>
+    <a class="nav-item"><i data-lucide="tv-2"></i> TV Shows</a>
+    <a class="nav-item"><i data-lucide="flame"></i> Trending</a>
+    <a class="nav-item"><i data-lucide="newspaper"></i> News</a>
+    <a class="nav-item"><i data-lucide="bar-chart-2"></i> Dashboards</a>
+  </div>
+</nav>
+
+<hr>
+
+<h2>Alternativas de iconos por sección</h2>
+
+<p style="color:#666; font-size:12px; margin-bottom:24px;">Pasa el cursor sobre cada card para ver el efecto hover.</p>
+
+<!-- Movies -->
+<h2 style="margin-top:28px;">Movies</h2>
+<div class="options">
+  <div class="option-card"><i data-lucide="clapperboard"></i> clapperboard <span class="tag">recomendado</span></div>
+  <div class="option-card"><i data-lucide="film"></i> film</div>
+  <div class="option-card"><i data-lucide="video"></i> video</div>
+  <div class="option-card"><i data-lucide="popcorn"></i> popcorn</div>
+</div>
+
+<!-- TV Shows -->
+<h2>TV Shows</h2>
+<div class="options">
+  <div class="option-card"><i data-lucide="tv-2"></i> tv-2 <span class="tag">recomendado</span></div>
+  <div class="option-card"><i data-lucide="monitor-play"></i> monitor-play</div>
+  <div class="option-card"><i data-lucide="tv"></i> tv</div>
+  <div class="option-card"><i data-lucide="airplay"></i> airplay</div>
+</div>
+
+<!-- Trending -->
+<h2>Trending</h2>
+<div class="options">
+  <div class="option-card"><i data-lucide="flame"></i> flame <span class="tag">recomendado</span></div>
+  <div class="option-card"><i data-lucide="trending-up"></i> trending-up</div>
+  <div class="option-card"><i data-lucide="zap"></i> zap</div>
+  <div class="option-card"><i data-lucide="sparkles"></i> sparkles</div>
+</div>
+
+<!-- News -->
+<h2>News</h2>
+<div class="options">
+  <div class="option-card"><i data-lucide="newspaper"></i> newspaper <span class="tag">recomendado</span></div>
+  <div class="option-card"><i data-lucide="rss"></i> rss</div>
+  <div class="option-card"><i data-lucide="book-open"></i> book-open</div>
+  <div class="option-card"><i data-lucide="scroll-text"></i> scroll-text</div>
+</div>
+
+<!-- Dashboards -->
+<h2>Dashboards</h2>
+<div class="options">
+  <div class="option-card"><i data-lucide="bar-chart-2"></i> bar-chart-2 <span class="tag">recomendado</span></div>
+  <div class="option-card"><i data-lucide="layout-dashboard"></i> layout-dashboard</div>
+  <div class="option-card"><i data-lucide="pie-chart"></i> pie-chart</div>
+  <div class="option-card"><i data-lucide="activity"></i> activity</div>
+</div>
+
+<!-- Brand / Logo -->
+<h2>Logo (Movie Roulette) — opciones con feeling de azar/giro</h2>
+<div class="options">
+  <div class="option-card"><i data-lucide="dice-5"></i> dice-5 <span class="tag">dado</span></div>
+  <div class="option-card"><i data-lucide="dice-6"></i> dice-6 <span class="tag">dado</span></div>
+  <div class="option-card"><i data-lucide="shuffle"></i> shuffle <span class="tag">aleatorio</span></div>
+  <div class="option-card"><i data-lucide="aperture"></i> aperture <span class="tag">giro/rueda</span></div>
+  <div class="option-card"><i data-lucide="target"></i> target <span class="tag">rueda</span></div>
+  <div class="option-card"><i data-lucide="compass"></i> compass <span class="tag">giro</span></div>
+  <div class="option-card"><i data-lucide="rotate-cw"></i> rotate-cw <span class="tag">giro</span></div>
+  <div class="option-card"><i data-lucide="refresh-cw"></i> refresh-cw <span class="tag">aleatorio</span></div>
+  <div class="option-card"><i data-lucide="circle-dot"></i> circle-dot <span class="tag">ruleta</span></div>
+  <div class="option-card"><i data-lucide="drama"></i> drama <span class="tag">entretenimiento</span></div>
+</div>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

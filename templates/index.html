@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+{% block title %}Home{% endblock %}
+{% block main %}
+<style>
+    .movie-grid { display:flex; flex-wrap:wrap; gap:20px; justify-content:center; padding:20px 0; }
+    .movie-card {
+        width:180px; border-radius:8px; background-color:#1c1c1c;
+        color:white; box-shadow:0 4px 12px rgba(0,0,0,0.2);
+        transition:transform 0.2s; position:relative; overflow:visible;
+    }
+    .movie-card:hover { transform:scale(1.04); z-index:10; }
+    .movie-card img { width:100%; height:270px; object-fit:cover; display:block; border-radius:8px 8px 0 0; }
+    .card-link { text-decoration:none; color:inherit; display:block; cursor:pointer; }
+    .card-link:hover .card-title { color:#f5c518; }
+    .no-poster {
+        width:100%; height:270px; background-color:#333; display:flex;
+        align-items:center; justify-content:center; font-size:13px;
+        color:#aaa; border-radius:8px 8px 0 0;
+    }
+    .card-info { padding:10px; background-color:#1c1c1c; border-radius:0 0 8px 8px; }
+    .card-info a { color:white; font-weight:bold; font-size:13px; text-decoration:none; }
+    .card-info a:hover { color:#f5c518; }
+    .meta { font-size:12px; color:#aaa; margin-top:4px; }
+    .rating { color:#f5c518; font-weight:bold; }
+    .overview {
+        font-size:11px; color:#ccc; margin-top:6px;
+        overflow:hidden; display:-webkit-box;
+        -webkit-line-clamp:3; -webkit-box-orient:vertical;
+    }
+    /* Hover expande el overview completo */
+    .movie-card:hover .overview {
+        display:block; overflow:visible;
+        position:absolute; left:0; right:0;
+        background-color:#2a2a2a; padding:10px;
+        border-radius:0 0 8px 8px;
+        box-shadow:0 8px 20px rgba(0,0,0,0.7);
+        z-index:20; font-size:11px; color:#ddd;
+    }
+    h1 { margin-bottom:5px; }
+    .subtitle { color:#aaa; font-size:14px; margin-bottom:20px; }
+    .spin-btn {
+        background-color:#f5c518; color:black; border:none;
+        padding:10px 28px; border-radius:8px; font-size:16px;
+        font-weight:bold; cursor:pointer; margin-bottom:24px;
+        transition:background-color 0.2s;
+    }
+    .spin-btn:hover { background-color:#d4a900; }
+</style>
+
+<h1><i data-lucide="shuffle" style="width:36px;height:36px;stroke:#f5c518;stroke-width:2;vertical-align:middle;margin-right:10px;margin-bottom:6px;"></i>Movie Roulette</h1>
+<p class="subtitle">Spin for 15 random picks from the IMDb database</p>
+<form method="GET" action="/">
+    <button class="spin-btn" type="submit">🎲 Spin Again</button>
+</form>
+
+<div class="movie-grid">
+    {% for i in mov %}
+    <div class="movie-card">
+        {% if i.tmdb_id %}
+        <a class="card-link" href="/movie/{{ i.tmdb_id }}">
+        {% else %}
+        <a class="card-link" href="https://www.youtube.com/results?search_query={{ i.title }}+{{ i.year }}+movie+trailer" target="_blank">
+        {% endif %}
+            {% if i.poster %}
+                <img src="{{ i.poster }}" alt="{{ i.title }}">
+            {% else %}
+                <div class="no-poster">No poster</div>
+            {% endif %}
+            <div class="card-info">
+                <div class="card-title" style="font-weight:bold; font-size:13px;">{{ i.title }}</div>
+                <div class="meta">{{ i.year }} &nbsp;|&nbsp; <span class="rating">⭐ {{ i.rating }}</span>{% if i.country %} &nbsp;|&nbsp; 🌍 {{ i.country }}{% endif %}</div>
+                {% if i.overview %}<div class="overview">{{ i.overview }}</div>{% endif %}
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

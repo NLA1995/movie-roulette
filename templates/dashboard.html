@@ -1,0 +1,576 @@
+{% extends "layout.html" %}
+{% block title %}Dashboards{% endblock %}
+
+{% block main %}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+<style>
+    .dash-card {
+        background: #1e1e1e;
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2.5rem;
+    }
+    .dash-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #f5c518;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.3rem;
+    }
+    .dash-subtitle {
+        font-size: 0.88rem;
+        color: #888;
+        margin-bottom: 1.5rem;
+    }
+    .spinner-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 400px;
+        color: #888;
+        gap: 0.75rem;
+        font-size: 0.95rem;
+    }
+</style>
+
+<div class="text-start mb-4">
+    <h1>📊 Dashboards</h1>
+    <p class="text-muted" style="font-size:0.95rem;">
+        Live data pulled from TMDB · Charts update every 12 hours
+    </p>
+</div>
+
+<!-- Chart 1: Genres by Decade -->
+<div class="dash-card">
+    <div class="dash-title">Genre Trends</div>
+    <div class="dash-subtitle">
+        How many films per genre were released each decade,
+        based on titles with at least 50 votes on TMDB.
+    </div>
+    <div id="genres-chart">
+        <div class="spinner-wrap">
+            <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+            Loading genre data…
+        </div>
+    </div>
+</div>
+
+<!-- More button + article for Genre Trends -->
+<div class="text-center mb-4" style="margin-top:-1.5rem;">
+    <button id="more-btn" class="btn btn-outline-warning btn-sm px-4"
+            onclick="toggleArticle()">More ▾</button>
+</div>
+
+<div id="genre-article" style="display:none; background:#1a1a1a; border-left:3px solid #f5c518;
+     border-radius:8px; padding:2rem 2.5rem; margin-bottom:2.5rem; color:#ccc; line-height:1.8; text-align:left;">
+
+    <h2 style="color:#f5c518; font-size:1.5rem; margin-bottom:0.15rem;">
+        The Silver Screen by the Numbers: Decoding a Half-Century of Cinema Through a Heatmap
+    </h2>
+    <p style="color:#666; font-size:0.85rem; margin-bottom:2rem;">
+        Data source: Film genre counts aggregated by decade. Color scale ranges from near-zero (light yellow)
+        to 5,000+ films (deep crimson). Genre classifications based on primary genre tags in the underlying dataset.
+    </p>
+
+    <h4 style="color:#fff;">Introduction</h4>
+    <p>Data visualization has become one of the most powerful tools for making sense of massive cultural
+    datasets. When applied to film history, the right chart can compress decades of artistic output into a
+    single, scannable image — revealing patterns that would otherwise be buried in spreadsheets. The heatmap
+    titled <em>"Films per Genre by Decade"</em> is a prime example: a deceptively simple grid that tells a
+    rich, layered story about how the global film industry has evolved from the 1970s through the early 2020s.</p>
+    <p>This article breaks down what the chart shows, how to read it, and what the patterns mean for anyone
+    interested in film history, industry trends, or data storytelling.</p>
+
+    <h4 style="color:#fff;">How to Read the Chart</h4>
+    <p>The visualization uses a <strong style="color:#f5c518;">heatmap</strong> — a matrix where each cell
+    represents the intersection of a <strong style="color:#f5c518;">genre</strong> (Y-axis) and a
+    <strong style="color:#f5c518;">decade</strong> (X-axis). The intensity of color encodes the number of
+    films produced:</p>
+    <table style="border-collapse:collapse; margin:1rem 0 1.5rem; width:auto;">
+        <thead>
+            <tr>
+                <th style="border:1px solid #333; padding:0.4rem 1rem; color:#f5c518; background:#222;">Color</th>
+                <th style="border:1px solid #333; padding:0.4rem 1rem; color:#f5c518; background:#222;">Approximate Count</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td style="border:1px solid #333; padding:0.4rem 1rem;">Light yellow</td><td style="border:1px solid #333; padding:0.4rem 1rem;">Near 0</td></tr>
+            <tr><td style="border:1px solid #333; padding:0.4rem 1rem;">Pale orange</td><td style="border:1px solid #333; padding:0.4rem 1rem;">~1,000</td></tr>
+            <tr><td style="border:1px solid #333; padding:0.4rem 1rem;">Orange</td><td style="border:1px solid #333; padding:0.4rem 1rem;">~2,000–3,000</td></tr>
+            <tr><td style="border:1px solid #333; padding:0.4rem 1rem;">Red</td><td style="border:1px solid #333; padding:0.4rem 1rem;">~4,000</td></tr>
+            <tr><td style="border:1px solid #333; padding:0.4rem 1rem;">Deep crimson / dark red</td><td style="border:1px solid #333; padding:0.4rem 1rem;">5,000+</td></tr>
+        </tbody>
+    </table>
+    <p>The genres tracked are: Fantasy, Documentary, Animation, Thriller, Sci-Fi, Romance, Horror, Drama,
+    Comedy, and Action — spanning six decades from the <strong style="color:#f5c518;">1970s</strong> to the
+    <strong style="color:#f5c518;">2020s</strong>.</p>
+
+    <h4 style="color:#fff;">The Big Picture: A Century of Growth</h4>
+    <p>The most immediately striking pattern is the overall brightening of the chart from left to right —
+    nearly every genre shows a dramatic increase in output as the decades progress. This reflects a
+    well-documented reality: global film production has grown exponentially, driven by:</p>
+    <ul>
+        <li>Democratization of filmmaking technology (digital cameras, editing software)</li>
+        <li>Expansion of distribution platforms (cable TV, DVD, then streaming)</li>
+        <li>Growth of international film industries, particularly in India, South Korea, Nigeria (Nollywood), and China</li>
+        <li>Increased demand from streaming services such as Netflix, Amazon Prime, and Disney+, all of which
+        became aggressive film commissioners in the 2010s</li>
+    </ul>
+    <p>The 1970s and 1980s appear almost uniformly pale across all genres — not because those decades were
+    artistically poor, but because global production volume was genuinely lower, and data availability for
+    older films is also less complete in most databases.</p>
+
+    <h4 style="color:#fff;">Genre-by-Genre Analysis</h4>
+
+    <h5 style="color:#f5c518; margin-top:1.25rem;">Drama — The Undisputed Titan</h5>
+    <p>Drama is the chart's defining feature. Its cell for the <strong>2010s</strong> is the darkest on the
+    entire grid, indicating a count north of 5,000 films in that decade alone — the maximum of the color
+    scale. This is not surprising: Drama is the broadest and most elastic genre category. Nearly any film
+    with a focus on character conflict and emotional stakes can be labeled a Drama, and major streaming
+    platforms (Netflix especially) dramatically increased output of prestige drama content in the 2010s.</p>
+    <p>The Drama row also shows a compelling growth trajectory: pale yellow in the 1970s, deepening steadily
+    through the 1980s and 1990s, reaching a red-orange peak in the 2000s before exploding in the 2010s. The
+    slight cool-down in the 2020s cell is expected — the decade was only partially complete when this dataset
+    was compiled, and the COVID-19 pandemic (2020–2021) significantly disrupted production globally.</p>
+
+    <h5 style="color:#f5c518; margin-top:1.25rem;">Comedy — A Close Second</h5>
+    <p>Comedy follows almost exactly the same pattern as Drama, peaking in deep red in the 2010s. The Comedy
+    genre has historically been one of the most commercially reliable, and streaming platforms invested
+    heavily in original comedies during the 2010s. The slight relative dimming compared to Drama suggests
+    that, while prolific, Comedy films are somewhat fewer in absolute terms — or that genre tagging is
+    slightly less inclusive.</p>
+
+    <h5 style="color:#f5c518; margin-top:1.25rem;">Thriller — A Steady Climber</h5>
+    <p>The Thriller row shows a more moderate but consistent growth curve. By the 2010s, it reaches a strong
+    orange hue, reflecting the genre's popularity in both Hollywood blockbusters and the wave of international
+    thrillers from South Korea (e.g., <em>Parasite</em>, <em>Oldboy</em>) and Spain. Thriller also benefited
+    enormously from the streaming era, as the format's tension-driven narratives are particularly well-suited
+    to binge-watching behavior.</p>
+
+    <h5 style="color:#f5c518; margin-top:1.25rem;">Sci-Fi — Modest but Meaningful</h5>
+    <p>Sci-Fi appears as a mid-intensity genre throughout, never reaching the darkest reds but warming
+    steadily over time. This is interesting given the cultural prominence of franchises like <em>Star Wars</em>,
+    <em>The Matrix</em>, and the Marvel Cinematic Universe's sci-fi adjacent entries. The relatively moderate
+    count likely reflects that Sci-Fi is a more niche category requiring higher production budgets, which
+    naturally limits volume compared to Drama or Comedy.</p>
+
+    <h5 style="color:#f5c518; margin-top:1.25rem;">Romance and Horror — Parallel Trajectories</h5>
+    <p>Both Romance and Horror show moderate heat levels, peaking in the 2000s and 2010s with orange tones.
+    Horror is particularly notable as an efficient genre: relatively low budgets with high return potential
+    (e.g., <em>Paranormal Activity</em>, <em>Get Out</em>, <em>A Quiet Place</em>), which makes it attractive
+    to independent producers. The 2000s and 2010s were widely recognized as a horror renaissance, reflected
+    in the heatmap.</p>
+
+    <h5 style="color:#f5c518; margin-top:1.25rem;">Animation — A Slow Burn</h5>
+    <p>Animation stays consistently warm but never reaches peak intensity, which makes sense given the high
+    production cost and time investment of animated films. The genre did warm noticeably in the 2010s,
+    reflecting the global expansion of animation studios beyond Disney/Pixar into studios like DreamWorks,
+    Studio Ghibli's international distribution, and the rise of Japanese and Chinese animated features.</p>
+
+    <h5 style="color:#f5c518; margin-top:1.25rem;">Fantasy — Surprisingly Consistent</h5>
+    <p>Fantasy shows relatively even warmth across all decades, including earlier ones. This may be partly a
+    genre-tagging artifact — Fantasy overlaps significantly with Sci-Fi, Adventure, and even Drama in many
+    databases. The lack of a dramatic spike is somewhat counterintuitive given the cultural dominance of the
+    Lord of the Rings and Harry Potter franchises in the 2000s, but those films are often multi-tagged,
+    diluting the Fantasy-specific count.</p>
+
+    <h5 style="color:#f5c518; margin-top:1.25rem;">Documentary — An Underappreciated Giant</h5>
+    <p>Documentary is one of the more fascinating rows: it shows solid warmth through the 2000s before
+    cooling in the 2020s. The 2000s and 2010s were a golden era for documentary filmmaking, driven by
+    political events (<em>Fahrenheit 9/11</em>, <em>An Inconvenient Truth</em>), streaming platform
+    commissions, and the lowered cost of production. The slight cooling in the 2020s may reflect both the
+    truncated dataset and a saturation effect in the market.</p>
+
+    <h5 style="color:#f5c518; margin-top:1.25rem;">Action — The Surprising Underperformer</h5>
+    <p>Action is perhaps the most counterintuitive row in the entire chart. Despite being arguably the most
+    commercially visible genre of the past 50 years, the Action row stays relatively pale — consistently
+    lighter than Drama, Comedy, and even Thriller. This is almost certainly a database taxonomy effect: films
+    tagged as Action in genre databases are often simultaneously tagged as Thriller, Sci-Fi, or Adventure,
+    and counting methodology (primary genre vs. any genre) can dramatically affect the results. It may also
+    reflect that "Action" as a standalone primary genre is less common than as a secondary descriptor.</p>
+
+    <h4 style="color:#fff;">The 2020s: Reading an Incomplete Decade</h4>
+    <p>Every genre shows a notable dimming in the 2020s column. This should not be interpreted as a decline
+    in filmmaking — rather, it reflects two realities:</p>
+    <ul>
+        <li>The dataset likely ends mid-decade (2023 or 2024 at latest), meaning only 3–4 years of data are
+        represented versus the full 10 years of prior decades.</li>
+        <li>The COVID-19 pandemic (2020–2021) caused a historic shutdown of global film production, creating
+        a genuine gap in output that even the streaming surge of 2022–2023 hasn't fully offset.</li>
+    </ul>
+
+    <h4 style="color:#fff;">What the Chart Doesn't Show (And Why It Matters)</h4>
+    <p>A heatmap of production volume is a powerful tool, but it has important blind spots:</p>
+    <ul>
+        <li><strong style="color:#f5c518;">Quality vs. quantity:</strong> The chart counts films, not audience
+        reception. A decade with 5,000 Drama films may have a lower average quality than one with 500.</li>
+        <li><strong style="color:#f5c518;">Box office and cultural impact:</strong> A single <em>Titanic</em>
+        or <em>Avengers: Endgame</em> may have more cultural weight than hundreds of direct-to-streaming titles.</li>
+        <li><strong style="color:#f5c518;">Regional origin:</strong> The explosive growth in the 2010s is
+        partly driven by non-Hollywood production. Separating US output from global output would tell a very
+        different story.</li>
+        <li><strong style="color:#f5c518;">Genre fluidity:</strong> Films are often assigned multiple genres;
+        the counting method (primary genre only vs. all tags) significantly affects which cells light up.</li>
+    </ul>
+
+    <h4 style="color:#fff;">Conclusion</h4>
+    <p>The <em>"Films per Genre by Decade"</em> heatmap is a masterclass in information density. In a single
+    glance, it communicates the explosive growth of global film production, the dominance of Drama and Comedy
+    as volume genres, the steady rise of Thriller and Horror, and the truncated nature of the current
+    decade's data.</p>
+    <p>More than that, it raises questions worth exploring further: Why does Action appear so pale despite its
+    commercial dominance? What drove the Documentary boom of the 2000s? How much of the 2010s surge is
+    attributable to Netflix and other streamers?</p>
+    <p>Data visualizations like this one are best understood not as final answers, but as
+    <strong style="color:#f5c518;">precise questions</strong> — a map of where deeper investigation
+    should begin.</p>
+
+</div>
+
+<!-- Chart 2: Budget vs Rating -->
+<div class="dash-card">
+    <div class="dash-title">Budget vs. Rating</div>
+    <div class="dash-subtitle">
+        Does spending more money make a better film? Each dot is a popular movie
+        with 1 000+ votes. Color shows how many people voted for it.
+    </div>
+    <div id="budget-chart">
+        <div class="spinner-wrap">
+            <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+            Loading budget data…
+        </div>
+    </div>
+</div>
+
+<!-- More button + article for Budget vs Rating -->
+<div class="text-center mb-4" style="margin-top:-1.5rem;">
+    <button id="budget-more-btn" class="btn btn-outline-warning btn-sm px-4"
+            onclick="toggleBudgetArticle()">More ▾</button>
+</div>
+
+<div id="budget-article" style="display:none; background:#1a1a1a; border-left:3px solid #f5c518;
+     border-radius:8px; padding:2rem 2.5rem; margin-bottom:2.5rem; color:#ccc; line-height:1.8; text-align:left;">
+
+    <h2 style="color:#f5c518; font-size:1.5rem; margin-bottom:0.15rem;">
+        Does Money Buy Quality? Decoding the Budget vs. Rating Scatter Plot
+    </h2>
+    <p style="color:#666; font-size:0.85rem; margin-bottom:2rem;">
+        Data source: Popular films with 1,000+ TMDB votes. X-axis: production budget in millions USD.
+        Y-axis: TMDB audience rating. Dot color: total vote count (purple = ~5k, yellow = ~35k+).
+    </p>
+
+    <h4 style="color:#fff;">Introduction</h4>
+    <p>One of the oldest debates in Hollywood is whether throwing more money at a film guarantees a better
+    result. Producers, studios, and audiences have long assumed a correlation between budget and quality —
+    yet the data tells a far more nuanced story. The scatter plot above maps production budget against TMDB
+    audience rating for a curated set of popular films, with each dot's color indicating how many people
+    actually voted for it. The result is a revealing portrait of how money, quality, and popularity
+    interact — and frequently diverge.</p>
+
+    <h4 style="color:#fff;">How to Read the Chart</h4>
+    <p>Each dot represents a single film. Its horizontal position shows how much it cost to make; its
+    vertical position shows how audiences rated it on TMDB. The color adds a third dimension:</p>
+    <table style="border-collapse:collapse; margin:1rem 0 1.5rem; width:auto;">
+        <thead>
+            <tr>
+                <th style="border:1px solid #333; padding:0.4rem 1rem; color:#f5c518; background:#222;">Color</th>
+                <th style="border:1px solid #333; padding:0.4rem 1rem; color:#f5c518; background:#222;">Vote Count</th>
+                <th style="border:1px solid #333; padding:0.4rem 1rem; color:#f5c518; background:#222;">What it means</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="border:1px solid #333; padding:0.4rem 1rem;">Deep purple</td>
+                <td style="border:1px solid #333; padding:0.4rem 1rem;">~5,000</td>
+                <td style="border:1px solid #333; padding:0.4rem 1rem;">Niche or underrated</td>
+            </tr>
+            <tr>
+                <td style="border:1px solid #333; padding:0.4rem 1rem;">Blue / teal</td>
+                <td style="border:1px solid #333; padding:0.4rem 1rem;">10k–20k</td>
+                <td style="border:1px solid #333; padding:0.4rem 1rem;">Solidly popular</td>
+            </tr>
+            <tr>
+                <td style="border:1px solid #333; padding:0.4rem 1rem;">Green</td>
+                <td style="border:1px solid #333; padding:0.4rem 1rem;">25k–30k</td>
+                <td style="border:1px solid #333; padding:0.4rem 1rem;">Widely seen</td>
+            </tr>
+            <tr>
+                <td style="border:1px solid #333; padding:0.4rem 1rem;">Yellow</td>
+                <td style="border:1px solid #333; padding:0.4rem 1rem;">35k+</td>
+                <td style="border:1px solid #333; padding:0.4rem 1rem;">Massive mainstream reach</td>
+            </tr>
+        </tbody>
+    </table>
+    <p>A film in the upper-left corner is cheap, highly rated, and potentially overlooked. A film in the
+    lower-right is expensive, poorly rated, and — if purple — also ignored by audiences.</p>
+
+    <h4 style="color:#fff;">What the Trend Line and R² Tell Us</h4>
+    <p>The dashed yellow line running across the chart is a <strong style="color:#f5c518;">linear regression</strong>
+    — the best-fit straight line through all the data points. It shows the average direction of the
+    relationship between budget and rating. The fact that it is nearly flat is already telling, but the
+    number that makes it precise is <strong style="color:#f5c518;">R²</strong>.</p>
+    <p>R² (pronounced "R-squared") is the <em>coefficient of determination</em>. It measures what percentage
+    of the variation in ratings can be explained by budget alone. It ranges from 0 to 1:</p>
+    <ul>
+        <li><strong style="color:#f5c518;">R² = 1.0</strong> — budget perfectly predicts rating. Every dollar
+        spent maps exactly to a better score.</li>
+        <li><strong style="color:#f5c518;">R² = 0.0</strong> — budget explains nothing. Knowing a film's
+        budget tells you nothing about its rating.</li>
+    </ul>
+    <p>The R² for this dataset sits close to zero — meaning <strong style="color:#f5c518;">budget accounts
+    for less than 5% of the variance in audience ratings</strong>. The other 95%+ is determined by factors
+    the budget cannot buy: screenplay quality, direction, performance, pacing, and originality.</p>
+    <p>This is not a weak correlation — it is essentially no correlation. A randomly selected low-budget
+    film is just as likely to score an 8.0 as a randomly selected blockbuster.</p>
+
+    <h4 style="color:#fff;">The Central Finding: No Clear Correlation</h4>
+    <p>The most important takeaway from the chart is what is <em>absent</em>: there is no clear upward trend
+    from left to right. If budget reliably produced better films, you would expect dots to climb as you move
+    toward the right. Instead, the chart shows a near-horizontal cloud — ratings hover between 6.5 and 8.5
+    regardless of whether a film cost $5 million or $300 million.</p>
+    <p>This is not a minor statistical noise. It is a robust pattern that has been confirmed repeatedly in
+    academic studies of film economics: production budget is a weak predictor of audience satisfaction.
+    What budget <em>does</em> predict is marketing reach and opening-weekend performance — neither of which
+    appears on this chart.</p>
+
+    <h4 style="color:#fff;">The Upper-Left Cluster: Where Excellence Lives on a Budget</h4>
+    <p>The most visually striking region of the chart is the dense cluster of teal and green dots in the
+    upper-left — films with budgets under $50 million and ratings between 8.0 and 8.8. These are the
+    overachievers: productions that maximized storytelling, direction, and performance without the safety net
+    of a massive marketing budget or franchise IP.</p>
+    <p>Films in this zone tend to share common traits: strong screenplays, auteur direction, word-of-mouth
+    distribution, and ratings built over time by genuinely engaged audiences rather than opening-weekend
+    hype. The teal coloring suggests moderate vote counts — these films are beloved, but not universally
+    seen, which is itself a comment on how distribution budgets gate cultural reach.</p>
+
+    <h4 style="color:#fff;">The $100M–$200M Band: The Blockbuster Sweet Spot</h4>
+    <p>The mid-range of the X-axis — budgets between $100M and $200M — shows the most evenly distributed
+    ratings, spanning from 6.0 to 8.5. This is the traditional Hollywood blockbuster zone: franchise
+    sequels, superhero films, and prestige action pictures. The wide vertical spread here tells an important
+    story: spending $150 million is no guarantee of anything. A $150M film can be a beloved cultural event
+    or a critically panned disappointment, depending entirely on execution.</p>
+    <p>The yellow and bright-green dots in this range — films with very high vote counts — tend to cluster
+    toward the upper half of the rating axis. This suggests that the most-watched blockbusters do tend to
+    be better than average, but the correlation is driven by audience selectivity (people vote more on films
+    they loved) rather than budget causing quality.</p>
+
+    <h4 style="color:#fff;">The $250M+ Outliers: Big Budget, Mixed Results</h4>
+    <p>The right edge of the chart — budgets above $250M — contains a small but telling set of data points.
+    Ratings here range from 7.5 to 8.5, suggesting that truly mega-budget productions do avoid the lowest
+    ratings (perhaps because studios apply extraordinary quality control when stakes are this high), but
+    they don't consistently reach the top either. The absence of any 9.0+ rated film in this budget range
+    is notable: the most beloved films of any era tend to have been made for far less.</p>
+
+    <h4 style="color:#fff;">Vote Count as a Hidden Variable</h4>
+    <p>The color dimension adds crucial context that a simple rating chart would miss. Several important
+    patterns emerge:</p>
+    <ul>
+        <li><strong style="color:#f5c518;">Purple dots with high ratings</strong> represent hidden gems —
+        films that earned excellent scores from a small, dedicated audience but never reached mass
+        distribution. These are often the most rewarding discoveries for film enthusiasts.</li>
+        <li><strong style="color:#f5c518;">Yellow dots with moderate ratings</strong> (around 7.0–7.5)
+        represent the commercial mainstream — films seen by millions but rated cautiously, perhaps
+        because mass audiences are more forgiving or because the films were designed for broad appeal
+        rather than depth.</li>
+        <li><strong style="color:#f5c518;">Purple dots with low ratings</strong> represent the most
+        unfortunate category: expensive films that failed both critically and commercially, seen by
+        few and liked by fewer.</li>
+    </ul>
+
+    <h4 style="color:#fff;">What the Chart Doesn't Show (And Why It Matters)</h4>
+    <p>Like all data visualizations, this scatter plot has important blind spots that prevent it from
+    being a complete picture of the budget-quality relationship:</p>
+    <ul>
+        <li><strong style="color:#f5c518;">Marketing spend:</strong> A $50M production budget can be
+        paired with a $100M marketing budget. Total cost of release is often double the production
+        budget for major studios — a variable invisible here.</li>
+        <li><strong style="color:#f5c518;">Genre expectations:</strong> An action film rated 7.5 and a
+        drama rated 7.5 represent very different audience experiences. Genre norms heavily influence
+        how people rate films, and mixing genres in one chart flattens those differences.</li>
+        <li><strong style="color:#f5c518;">Time bias:</strong> Older films accumulate ratings from
+        self-selecting cinephiles who sought them out; newer films get rated by mass audiences
+        immediately after release. This creates a systematic upward bias for older films.</li>
+        <li><strong style="color:#f5c518;">Inflation:</strong> A $30M budget in 1995 is not the same
+        as $30M in 2020. Without inflation adjustment, budget comparisons across decades are imprecise.</li>
+        <li><strong style="color:#f5c518;">Survivorship bias:</strong> This dataset only includes films
+        with 1,000+ votes — which already filters out the lowest-quality, lowest-visibility productions.
+        The true bottom of the quality distribution is invisible.</li>
+    </ul>
+
+    <h4 style="color:#fff;">Conclusion</h4>
+    <p>The Budget vs. Rating scatter plot delivers a clear verdict on one of Hollywood's oldest
+    assumptions: <strong style="color:#f5c518;">money does not buy quality</strong>. The films that
+    audiences rate most highly are scattered across every budget tier, and the most expensive productions
+    cluster firmly in the middle of the rating scale — respectable, but rarely transcendent.</p>
+    <p>What the chart suggests instead is a two-track industry. Track one: lean, story-driven films that
+    earn devoted audiences through craft. Track two: large-budget productions that earn broad audiences
+    through spectacle and IP recognition, rated adequately but not memorably. Both tracks have their
+    place — but only one consistently produces the dots closest to the top of the chart.</p>
+    <p>For audiences, the practical implication is simple: the best films to seek out are often in the
+    <strong style="color:#f5c518;">upper-left corner</strong> — modest budgets, high ratings, and
+    smaller audiences waiting to be found.</p>
+
+</div>
+
+<!-- Chart 3: ROI by Genre -->
+<div class="dash-card">
+    <div class="dash-title">ROI by Genre</div>
+    <div class="dash-subtitle">
+        Which genres actually make money? Median return on investment per genre,
+        based on films with a reported budget over $5M and box office revenue over $1M.
+    </div>
+    <div id="roi-chart">
+        <div class="spinner-wrap">
+            <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+            Loading ROI data…
+        </div>
+    </div>
+</div>
+
+<div class="text-center mb-4" style="margin-top:-1.5rem;">
+    <button id="roi-more-btn" class="btn btn-outline-warning btn-sm px-4"
+            onclick="toggleRoiArticle()">More ▾</button>
+</div>
+
+<div id="roi-article" style="display:none; background:#1a1a1a; border-left:3px solid #f5c518;
+     border-radius:8px; padding:2rem 2.5rem; margin-bottom:2.5rem; color:#ccc; line-height:1.8; text-align:left;">
+
+    <h2 style="color:#f5c518; font-size:1.5rem; margin-bottom:0.15rem;">
+        What Genre Makes the Most Money? Decoding ROI Across Hollywood's Major Categories
+    </h2>
+    <p style="color:#666; font-size:0.85rem; margin-bottom:2rem;">
+        Data source: Top voted films per genre via TMDB. Only films with reported budget &gt; $5M
+        and box office revenue &gt; $1M are included. ROI = (revenue − budget) / budget × 100.
+        Metric used: median ROI per genre (more robust than mean against outlier blockbusters).
+    </p>
+
+    <h4 style="color:#fff;">What Is ROI and Why Does It Matter in Cinema?</h4>
+    <p>Return on Investment (ROI) measures how much money a film earns relative to what it cost
+    to make. A film with a $10M budget that earns $80M has a ROI of 700% — it earned back eight
+    times what it cost, netting $70M in profit. A film with a $200M budget that earns $220M has an ROI of only 10% — barely
+    breaking even before marketing and distribution costs are factored in.</p>
+    <p>ROI is arguably more revealing than raw box office numbers. A $1B grossing film sounds
+    impressive until you learn it cost $350M to produce. Understanding ROI by genre tells us
+    which categories are genuinely efficient businesses — and which ones require massive bets
+    to generate modest returns.</p>
+
+    <h4 style="color:#fff;">How to Read This Chart</h4>
+    <p>Each bar represents the <strong style="color:#f5c518;">median ROI</strong> for films in
+    that genre. Median is used instead of mean to avoid distortion from extreme outliers — a
+    single $2B blockbuster would pull the average up dramatically for its genre even if most
+    films in that category barely broke even.</p>
+    <ul>
+        <li><strong style="color:#f5c518;">Yellow bars</strong> — genres with positive median ROI (profitable)</li>
+        <li><strong>n=</strong> above each bar shows the sample size — treat small samples with caution</li>
+    </ul>
+
+    <h4 style="color:#fff;">The Efficiency Champions</h4>
+    <p>Horror and Thriller consistently appear near the top of ROI charts across industry studies,
+    and this dataset is no exception. The reason is structural: both genres can be produced at
+    relatively low cost — a well-crafted horror film can be made for $5M–$20M — while audience
+    demand is strong enough to generate returns many times that figure.</p>
+    <p>Films like <em>Get Out</em> ($4.5M budget, $255M revenue), <em>A Quiet Place</em>
+    ($17M budget, $340M revenue), and <em>Paranormal Activity</em> ($15K budget, $193M revenue)
+    are extreme examples of this dynamic. They pull the genre median upward, but they also
+    reflect a genuine structural advantage: fear is cheap to manufacture on screen.</p>
+
+    <h4 style="color:#fff;">The Big Budget Trap</h4>
+    <p>Action and Sci-Fi, despite being the most visible genres in global box office rankings,
+    tend to show more modest ROI figures. The reason is the denominator: these genres require
+    large budgets — visual effects, stunts, star salaries — that compress the return even when
+    the film performs well commercially.</p>
+    <p>A superhero film that earns $800M sounds like an unqualified success. But if it cost
+    $300M to produce and another $200M to market globally, the actual return is far smaller than
+    a horror film that cost $10M and earned $80M. The industry calls this the
+    <strong style="color:#f5c518;">big budget trap</strong> — scale increases visibility but
+    erodes efficiency.</p>
+
+    <h4 style="color:#fff;">Animation: High Cost, Reliable Returns</h4>
+    <p>Animation occupies an interesting middle position. Production costs are high and timelines
+    are long, but the genre benefits from exceptional repeatability — animated films are rewatched
+    by families, sold as home media, and generate merchandise revenue that doesn't appear in
+    box office figures at all. The ROI visible here reflects only theatrical revenue, which
+    means Animation's true economic performance is likely significantly underrepresented.</p>
+
+    <h4 style="color:#fff;">Important Limitations</h4>
+    <ul>
+        <li><strong style="color:#f5c518;">Marketing costs are excluded.</strong> Production budget
+        and marketing budget are separate. Major studio releases typically spend 50–100% of the
+        production budget again on marketing. True profitability requires accounting for both.</li>
+        <li><strong style="color:#f5c518;">Many films report $0.</strong> TMDB relies on
+        self-reported or crowd-sourced financial data. A large portion of films have no budget or
+        revenue data, which biases the sample toward well-documented studio releases.</li>
+        <li><strong style="color:#f5c518;">Streaming revenue is invisible.</strong> Films sold
+        directly to Netflix or Amazon have no public box office figure. Their ROI is entirely
+        absent from this chart.</li>
+        <li><strong style="color:#f5c518;">Genre overlap.</strong> A film tagged as both Horror
+        and Thriller is counted in whichever genre TMDB lists first. Multi-genre films dilute
+        each category's signal.</li>
+    </ul>
+
+    <h4 style="color:#fff;">Conclusion</h4>
+    <p>The ROI chart reframes the question of what makes a successful film. Commercial dominance
+    and financial efficiency are not the same thing. The genres that fill the most screens and
+    generate the biggest headlines are often not the most efficient uses of capital. Meanwhile,
+    leaner genres — built on atmosphere, tension, and story rather than spectacle — consistently
+    return more per dollar invested.</p>
+    <p>For anyone studying the film industry as a business, the takeaway is clear:
+    <strong style="color:#f5c518;">the best risk-adjusted bet in Hollywood has historically
+    been a well-made, low-budget horror film.</strong></p>
+
+</div>
+
+<script>
+    const plotConfig = {
+        responsive: true,
+        displayModeBar: false,
+        locale: "en"
+    };
+
+    function loadChart(endpoint, elementId) {
+        fetch(endpoint)
+            .then(r => {
+                if (!r.ok) throw new Error("Network error");
+                return r.json();
+            })
+            .then(fig => {
+                document.getElementById(elementId).innerHTML = '';
+                Plotly.newPlot(elementId, fig.data, fig.layout, plotConfig);
+            })
+            .catch(() => {
+                document.getElementById(elementId).innerHTML =
+                    '<p class="text-danger mt-4">Could not load chart. Try refreshing the page.</p>';
+            });
+    }
+
+    loadChart("/dashboard/genres-data", "genres-chart");
+    loadChart("/dashboard/budget-data",  "budget-chart");
+    loadChart("/dashboard/roi-data",     "roi-chart");
+
+    function toggleBudgetArticle() {
+        const article = document.getElementById("budget-article");
+        const btn = document.getElementById("budget-more-btn");
+        const open = article.style.display === "none";
+        article.style.display = open ? "block" : "none";
+        btn.textContent = open ? "Less ▴" : "More ▾";
+    }
+
+    function toggleArticle() {
+        const article = document.getElementById("genre-article");
+        const btn = document.getElementById("more-btn");
+        const open = article.style.display === "none";
+        article.style.display = open ? "block" : "none";
+        btn.textContent = open ? "Less ▴" : "More ▾";
+    }
+
+    function toggleRoiArticle() {
+        const article = document.getElementById("roi-article");
+        const btn = document.getElementById("roi-more-btn");
+        const open = article.style.display === "none";
+        article.style.display = open ? "block" : "none";
+        btn.textContent = open ? "Less ▴" : "More ▾";
+    }
+</script>
+{% endblock %}

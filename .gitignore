@@ -1,0 +1,19 @@
+# Claude Code
+.claude/
+
+# Flask session files
+flask_session/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# IMDb dataset dumps (heavy, not needed in production)
+*.tsv.gz
+
+# Environment variables
+.env
+
+# SQLite journal (temporary file created during DB writes)
+*.db-journal

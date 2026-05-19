@@ -1,0 +1,95 @@
+{% extends "layout.html" %}
+{% block title %}TV Shows{% endblock %}
+{% block main %}
+<style>
+    .genre-grid { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin-bottom:40px; }
+    .genre-btn {
+        position:relative; width:200px; height:112px;
+        border-radius:8px; overflow:hidden; cursor:pointer;
+        border:none; padding:0; transition:transform 0.2s; background:#2a2a2a;
+    }
+    .genre-btn:hover { transform:scale(1.05); }
+    .genre-btn img { width:100%; height:100%; object-fit:cover; object-position:center; filter:brightness(0.7); transition:filter 0.2s, transform 0.2s; }
+    .genre-btn:hover img, .genre-btn.active img { filter:brightness(1); }
+    .genre-btn.zoom img { transform:scale(1.15); }
+    .genre-btn.zoom:hover img, .genre-btn.zoom.active img { transform:scale(1.2); }
+    .genre-btn.active { outline:3px solid #f5c518; border-radius:8px; }
+    .genre-btn .label {
+        position:absolute; top:50%; left:0; right:0;
+        transform:translateY(-50%);
+        text-align:center; color:white; font-size:18px;
+        font-weight:800; letter-spacing:2px; text-transform:uppercase;
+        text-shadow:0 2px 8px rgba(0,0,0,0.9);
+    }
+    .results-title { color:#f5c518; border-bottom:2px solid #f5c518; padding-bottom:6px; margin:10px 0 20px; }
+    .shows-grid { display:flex; flex-wrap:wrap; gap:16px; justify-content:center; }
+    .show-card {
+        width:155px; border-radius:8px; overflow:visible;
+        background-color:#1c1c1c; color:white;
+        box-shadow:0 4px 12px rgba(0,0,0,0.25);
+        transition:transform 0.2s; position:relative;
+    }
+    .show-card:hover { transform:scale(1.05); z-index:10; }
+    .show-card img { width:100%; height:230px; object-fit:cover; display:block; border-radius:8px 8px 0 0; }
+    .no-poster { width:100%; height:230px; background-color:#333; display:flex; align-items:center; justify-content:center; font-size:11px; color:#aaa; border-radius:8px 8px 0 0; }
+    .show-info { padding:8px; background-color:#1c1c1c; border-radius:0 0 8px 8px; }
+    .show-info a { color:white; font-size:12px; font-weight:bold; text-decoration:none; }
+    .show-info a:hover { color:#f5c518; }
+    .show-meta { font-size:11px; color:#aaa; margin-top:3px; }
+    .show-rating { color:#f5c518; font-weight:bold; }
+    .show-overview { font-size:10px; color:#ccc; margin-top:5px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
+    .show-card:hover .show-overview { display:block; overflow:visible; position:absolute; left:0; right:0; background-color:#2a2a2a; padding:8px; border-radius:0 0 8px 8px; box-shadow:0 8px 20px rgba(0,0,0,0.6); z-index:20; }
+</style>
+
+<h1>📺 TV Shows</h1>
+<p style="color:#aaa; font-size:14px; margin-bottom:20px;">Pick a genre to discover top-rated series</p>
+
+{% set genre_images = {
+    "Action & Adventure": url_for('static', filename='series_action.jpg'),
+    "Animation":          url_for('static', filename='series_animation.jpg'),
+    "Comedy":             url_for('static', filename='series_comedy.jpg'),
+    "Crime":              url_for('static', filename='series_crime.jpg'),
+    "Documentary":        url_for('static', filename='series_documentary.jpg'),
+    "Drama":              url_for('static', filename='series_drama.jpg'),
+    "Family":             url_for('static', filename='series_family.jpg'),
+    "Kids":               url_for('static', filename='series_kids.jpg'),
+    "Mystery":            url_for('static', filename='series_mistery.jpg'),
+    "Reality":            url_for('static', filename='series_reality.jpg'),
+    "Sci-Fi & Fantasy":   url_for('static', filename='series_sci-fi&fantasy.jpg'),
+    "Thriller":           url_for('static', filename='series_thriller.jpg'),
+    "War & Politics":     url_for('static', filename='series_war.jpg')
+} %}
+
+<form method="POST" action="/tvshows">
+<div class="genre-grid">
+    {% set zoom_genres = ["Animation", "Crime", "Documentary", "Drama", "Kids", "Mystery", "Thriller"] %}
+    {% for genre, img in genre_images.items() %}
+    <button type="submit" name="genre" value="{{ genre }}"
+            class="genre-btn {% if genre in zoom_genres %}zoom{% endif %} {% if genre == selected_genre %}active{% endif %}">
+        <img src="{{ img }}" alt="{{ genre }}" onerror="this.style.display='none'; this.parentNode.style.backgroundColor='#333';">
+        <div class="label">{{ genre }}</div>
+    </button>
+    {% endfor %}
+</div>
+</form>
+
+{% if shows %}
+<h3 class="results-title">Top {{ shows|length }} — {{ selected_genre }}</h3>
+<div class="shows-grid">
+    {% for show in shows %}
+    <a href="/tv/{{ show.tmdb_id }}" style="text-decoration:none; color:inherit;">
+    <div class="show-card">
+        {% if show.poster %}<img src="{{ show.poster }}" alt="{{ show.title }}">
+        {% else %}<div class="no-poster">No poster</div>{% endif %}
+        <div class="show-info">
+            <span style="color:white; font-size:12px; font-weight:bold;">{{ show.title }}</span>
+            <div class="show-meta">{{ show.year }} | <span class="show-rating">⭐ {{ show.rating }}</span></div>
+            <div class="show-overview">{{ show.overview }}</div>
+        </div>
+    </div>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

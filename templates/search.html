@@ -1,0 +1,213 @@
+{% extends "layout.html" %}
+{% block title %}Search{% endblock %}
+{% block main %}
+<style>
+    h1 { margin-bottom: 8px; }
+    .subtitle { color: #aaa; font-size: 14px; margin-bottom: 24px; }
+
+    .search-bar-lg {
+        display: flex; justify-content: center;
+        max-width: 560px; margin: 0 auto 32px;
+    }
+    .search-bar-lg input {
+        flex: 1; padding: 12px 18px;
+        background-color: #2a2a2a; border: 2px solid #444; border-right: none;
+        color: white; font-size: 15px; border-radius: 8px 0 0 8px;
+        font-family: 'Inter', sans-serif; outline: none;
+    }
+    .search-bar-lg input:focus { border-color: #f5c518; }
+    .search-bar-lg input::placeholder { color: #666; }
+    .search-bar-lg button {
+        padding: 12px 24px; background-color: #f5c518;
+        border: none; color: black; font-weight: 700;
+        font-size: 15px; border-radius: 0 8px 8px 0;
+        cursor: pointer; transition: background-color 0.2s;
+    }
+    .search-bar-lg button:hover { background-color: #d4a900; }
+
+    /* Tabs */
+    .tabs {
+        display: flex; justify-content: center; gap: 8px;
+        margin-bottom: 28px;
+    }
+    .tab-btn {
+        padding: 8px 28px; border-radius: 20px;
+        border: 2px solid #444; background: transparent;
+        color: #aaa; font-size: 14px; font-weight: 600;
+        cursor: pointer; transition: all 0.2s;
+        font-family: 'Inter', sans-serif;
+    }
+    .tab-btn:hover { border-color: #f5c518; color: #f5c518; }
+    .tab-btn.active { background-color: #f5c518; border-color: #f5c518; color: black; }
+    .tab-count {
+        background-color: rgba(255,255,255,0.15);
+        border-radius: 10px; padding: 1px 7px;
+        font-size: 11px; margin-left: 6px;
+    }
+    .tab-btn.active .tab-count { background-color: rgba(0,0,0,0.2); }
+
+    /* Grid */
+    .results-grid {
+        display: flex; flex-wrap: wrap;
+        gap: 18px; justify-content: center;
+        padding: 0 0 40px;
+    }
+    .result-card {
+        width: 165px; border-radius: 10px;
+        background-color: #1c1c1c; color: white;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+        transition: transform 0.2s; position: relative;
+        overflow: visible;
+    }
+    .result-card:hover { transform: scale(1.05); z-index: 10; }
+    .result-card img {
+        width: 100%; height: 248px; object-fit: cover;
+        border-radius: 10px 10px 0 0; display: block;
+    }
+    .no-poster {
+        width: 100%; height: 248px; background-color: #2a2a2a;
+        display: flex; align-items: center; justify-content: center;
+        flex-direction: column; gap: 8px; color: #555;
+        border-radius: 10px 10px 0 0; font-size: 36px;
+    }
+    .result-info { padding: 10px 10px 12px; }
+    .result-title {
+        font-size: 12px; font-weight: 700; color: white;
+        text-decoration: none; display: block;
+        line-height: 1.3; margin-bottom: 4px;
+    }
+    .result-title:hover { color: #f5c518; }
+    .result-meta { font-size: 11px; color: #aaa; }
+    .result-rating { color: #f5c518; font-weight: 700; }
+    .media-badge {
+        position: absolute; top: 8px; right: 8px;
+        background-color: rgba(0,0,0,0.75);
+        color: white; font-size: 9px; font-weight: 700;
+        padding: 3px 7px; border-radius: 4px;
+        backdrop-filter: blur(4px); text-transform: uppercase;
+    }
+    .media-badge.tv { background-color: #1a73e8; }
+    .pop-badge {
+        position: absolute; top: 8px; left: 8px;
+        background-color: rgba(0,0,0,0.75);
+        color: #f5c518; font-size: 10px; font-weight: 700;
+        padding: 3px 7px; border-radius: 4px;
+    }
+    .results-label { color: #aaa; font-size: 13px; margin-bottom: 20px; }
+    .results-label strong { color: white; }
+    .no-results { color: #666; margin-top: 60px; font-size: 15px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+</style>
+
+<h1>🔍 Search</h1>
+<p class="subtitle">Find movies and TV shows — sorted by popularity</p>
+
+<form action="/search" method="POST" id="search-form">
+    <input type="hidden" name="tab" id="active-tab-input" value="{{ tab }}">
+    <div class="search-bar-lg">
+        <input name="query" type="text"
+               placeholder="e.g. New Girl, Inception, Breaking Bad..."
+               value="{{ query }}" autofocus>
+        <button type="submit">Search</button>
+    </div>
+</form>
+
+{% if query %}
+<!-- Tabs -->
+<div class="tabs">
+    <button class="tab-btn {% if tab == 'movies' %}active{% endif %}"
+            onclick="switchTab('movies')">
+        🎬 Movies
+        <span class="tab-count">{{ movie_results | length }}</span>
+    </button>
+    <button class="tab-btn {% if tab == 'tv' %}active{% endif %}"
+            onclick="switchTab('tv')">
+        📺 TV Shows
+        <span class="tab-count">{{ tv_results | length }}</span>
+    </button>
+</div>
+
+<!-- MOVIES -->
+<div class="tab-panel {% if tab == 'movies' %}active{% endif %}" id="panel-movies">
+    {% if movie_results %}
+        <p class="results-label">
+            <strong>{{ movie_results | length }}</strong> movies for <strong>"{{ query }}"</strong>
+        </p>
+        <div class="results-grid">
+            {% for movie in movie_results %}
+            <div class="result-card">
+                {% if loop.index0 == 0 %}<div class="pop-badge">🔥 #1</div>{% endif %}
+                <div class="media-badge">Movie</div>
+                {% if movie.poster %}
+                    <img src="{{ movie.poster }}" alt="{{ movie.title }}" loading="lazy">
+                {% else %}
+                    <div class="no-poster">🎬</div>
+                {% endif %}
+                <div class="result-info">
+                    <a class="result-title"
+                       href="https://www.youtube.com/results?search_query={{ movie.title | urlencode }}+{{ movie.year }}+trailer"
+                       target="_blank">{{ movie.title }}</a>
+                    <div class="result-meta">
+                        {{ movie.year }}
+                        {% if movie.rating > 0 %} | <span class="result-rating">⭐ {{ movie.rating }}</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-results">🎭 No movies found for <strong>"{{ query }}"</strong></div>
+    {% endif %}
+</div>
+
+<!-- TV SHOWS -->
+<div class="tab-panel {% if tab == 'tv' %}active{% endif %}" id="panel-tv">
+    {% if tv_results %}
+        <p class="results-label">
+            <strong>{{ tv_results | length }}</strong> TV shows for <strong>"{{ query }}"</strong>
+        </p>
+        <div class="results-grid">
+            {% for show in tv_results %}
+            <div class="result-card">
+                {% if loop.index0 == 0 %}<div class="pop-badge">🔥 #1</div>{% endif %}
+                <div class="media-badge tv">TV</div>
+                {% if show.poster %}
+                    <img src="{{ show.poster }}" alt="{{ show.title }}" loading="lazy">
+                {% else %}
+                    <div class="no-poster">📺</div>
+                {% endif %}
+                <div class="result-info">
+                    <a class="result-title"
+                       href="https://www.youtube.com/results?search_query={{ show.title | urlencode }}+{{ show.year }}+series+trailer"
+                       target="_blank">{{ show.title }}</a>
+                    <div class="result-meta">
+                        {{ show.year }}
+                        {% if show.rating > 0 %} | <span class="result-rating">⭐ {{ show.rating }}</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-results">📺 No TV shows found for <strong>"{{ query }}"</strong></div>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+function switchTab(name) {
+    // Actualizar input hidden para que el form recuerde el tab
+    document.getElementById('active-tab-input').value = name;
+
+    // Activar/desactivar botones
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active');
+
+    // Mostrar/ocultar panels
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`panel-${name}`).classList.add('active');
+}
+</script>
+
+{% endblock %}

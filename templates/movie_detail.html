@@ -1,0 +1,374 @@
+{% extends "layout.html" %}
+{% block title %}{{ movie.title }}{% endblock %}
+{% block main %}
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,600;1,300&display=swap');
+
+    /* ── Reset del container de layout ── */
+    main.container-fluid { padding: 0 !important; }
+
+    /* ── HERO ── */
+    .hero {
+        position: relative;
+        min-height: 520px;
+        display: flex;
+        align-items: flex-end;
+        overflow: hidden;
+    }
+    .hero-bg {
+        position: absolute; inset: 0;
+        background-image: url('{{ movie.poster }}');
+        background-size: cover;
+        background-position: center 20%;
+        filter: blur(18px) brightness(0.35) saturate(1.4);
+        transform: scale(1.08);
+        z-index: 0;
+    }
+    .hero-content {
+        position: relative; z-index: 2;
+        display: flex;
+        align-items: flex-end;
+        gap: 40px;
+        padding: 48px 60px;
+        width: 100%;
+    }
+    .poster-wrap {
+        flex-shrink: 0;
+        width: 220px;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.06);
+        transform: translateY(40px);
+        transition: transform 0.4s ease;
+    }
+    .poster-wrap:hover { transform: translateY(36px) scale(1.02); }
+    .poster-wrap img { width: 100%; display: block; }
+    .no-poster-hero {
+        width: 220px; height: 330px;
+        background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 60px; border-radius: 12px;
+        flex-shrink: 0; transform: translateY(40px);
+    }
+
+    .hero-meta { padding-bottom: 8px; text-align: left; }
+    .hero-meta h1 {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: clamp(2.4rem, 5vw, 4rem);
+        letter-spacing: 1px;
+        color: white;
+        margin: 0 0 8px;
+        line-height: 1;
+        text-shadow: 0 2px 20px rgba(0,0,0,0.6);
+    }
+    .tagline-row {
+        display: flex; align-items: center; flex-wrap: wrap;
+        gap: 10px; margin-bottom: 14px;
+    }
+    .pill {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.15);
+        backdrop-filter: blur(8px);
+        color: #ddd; font-size: 12px; font-weight: 600;
+        padding: 4px 12px; border-radius: 20px;
+        font-family: 'DM Sans', sans-serif;
+    }
+    .pill.gold { background: rgba(245,197,24,0.15); border-color: #f5c518; color: #f5c518; }
+    .pill.green { background: rgba(52,211,153,0.15); border-color: #34d399; color: #34d399; }
+
+    .star-score {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 2.2rem; color: #f5c518;
+        letter-spacing: 1px; line-height: 1;
+    }
+    .star-score span { font-size: 1rem; color: #aaa; font-family: 'DM Sans', sans-serif; font-weight: 300; }
+
+    .overview-hero {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 14px; color: #ccc; font-weight: 300;
+        line-height: 1.7; max-width: 600px;
+        display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-top: 6px;
+    }
+
+    .hero-actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .btn-trailer {
+        background: #f5c518; color: black;
+        font-family: 'DM Sans', sans-serif; font-weight: 700;
+        font-size: 13px; padding: 10px 24px; border-radius: 8px;
+        text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+        transition: background 0.2s, transform 0.15s;
+        border: none;
+    }
+    .btn-trailer:hover { background: #d4a900; color: black; transform: translateY(-1px); }
+    .btn-imdb {
+        background: transparent; color: #f5c518;
+        font-family: 'DM Sans', sans-serif; font-weight: 600;
+        font-size: 13px; padding: 10px 24px; border-radius: 8px;
+        text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+        border: 2px solid rgba(245,197,24,0.4);
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .btn-imdb:hover { border-color: #f5c518; background: rgba(245,197,24,0.08); color: #f5c518; }
+
+    /* ── BODY ── */
+    .detail-body {
+        max-width: 1100px;
+        margin: 60px auto 80px;
+        padding: 0 40px;
+        text-align: left;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+    /* Sección genérica */
+    .section { margin-bottom: 48px; }
+    .section-label {
+        font-size: 10px; font-weight: 700; letter-spacing: 3px;
+        text-transform: uppercase; color: #f5c518;
+        margin-bottom: 16px;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .section-label::after {
+        content: ''; flex: 1; height: 1px;
+        background: linear-gradient(to right, rgba(245,197,24,0.3), transparent);
+    }
+
+    /* Overview completo */
+    .overview-full {
+        font-size: 15px; color: #ccc; line-height: 1.8;
+        font-weight: 300; max-width: 720px;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 16px;
+    }
+    .stat-card {
+        background: #1c1c1c;
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 10px; padding: 16px 20px;
+        transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: rgba(245,197,24,0.3); }
+    .stat-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px; }
+    .stat-value { font-size: 16px; font-weight: 600; color: white; }
+    .stat-value.gold { color: #f5c518; }
+
+    /* Géneros */
+    .genres-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .genre-tag {
+        background: #1c1c1c; border: 1px solid rgba(255,255,255,0.1);
+        color: #ddd; font-size: 12px; font-weight: 600;
+        padding: 6px 16px; border-radius: 20px;
+        transition: all 0.2s;
+    }
+    .genre-tag:hover { border-color: #f5c518; color: #f5c518; background: rgba(245,197,24,0.05); }
+
+    /* Cast */
+    .cast-list { display: flex; flex-wrap: wrap; gap: 10px; }
+    .cast-pill {
+        background: #1c1c1c;
+        border: 1px solid rgba(255,255,255,0.08);
+        color: #ccc; font-size: 12px; font-weight: 400;
+        padding: 8px 16px; border-radius: 8px;
+        display: flex; align-items: center; gap: 6px;
+    }
+    .cast-pill::before { content: '👤'; font-size: 11px; }
+
+    /* Plataformas */
+    .platform-list { display: flex; flex-wrap: wrap; gap: 10px; }
+    .platform-chip {
+        background: linear-gradient(135deg, #222, #1a1a1a);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: white; font-size: 12px; font-weight: 600;
+        padding: 8px 18px; border-radius: 8px;
+        display: flex; align-items: center; gap: 6px;
+    }
+    .platform-chip::before { content: '▶'; color: #f5c518; font-size: 9px; }
+
+    /* Director highlight */
+    .director-card {
+        display: inline-flex; align-items: center; gap: 14px;
+        background: #1c1c1c; border: 1px solid rgba(245,197,24,0.2);
+        border-radius: 10px; padding: 14px 24px;
+    }
+    .director-icon { font-size: 28px; }
+    .director-name { font-size: 15px; font-weight: 600; color: white; }
+    .director-role { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* Back button */
+    .back-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        color: #888; font-size: 13px; font-weight: 600;
+        text-decoration: none; margin-bottom: 32px;
+        transition: color 0.2s;
+        font-family: 'DM Sans', sans-serif;
+    }
+    .back-btn:hover { color: #f5c518; }
+
+    /* Divider decorativo */
+    .fancy-divider {
+        border: none;
+        height: 1px;
+        background: linear-gradient(to right, transparent, rgba(245,197,24,0.2), transparent);
+        margin: 0 0 48px;
+    }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+        .hero-content { flex-direction: column; align-items: flex-start; padding: 24px 20px; }
+        .poster-wrap, .no-poster-hero { width: 140px; transform: none; }
+        .detail-body { padding: 0 20px; }
+        .hero-meta h1 { font-size: 2rem; }
+    }
+</style>
+
+<!-- ── HERO ── -->
+<div class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+        {% if movie.poster %}
+            <div class="poster-wrap"><img src="{{ movie.poster }}" alt="{{ movie.title }}"></div>
+        {% else %}
+            <div class="no-poster-hero">🎬</div>
+        {% endif %}
+
+        <div class="hero-meta">
+            <h1>{{ movie.title }}</h1>
+
+            <div class="tagline-row">
+                {% if movie.year %}<span class="pill">{{ movie.year }}</span>{% endif %}
+                {% if movie.runtime %}<span class="pill">⏱ {{ movie.runtime }} min</span>{% endif %}
+                {% if movie.rating %}
+                    <span class="pill gold">⭐ {{ "%.1f"|format(movie.rating) }} / 10</span>
+                {% endif %}
+                {% for genre in movie.genres[:2] %}
+                    <span class="pill">{{ genre }}</span>
+                {% endfor %}
+            </div>
+
+            {% if movie.overview %}
+                <div class="overview-hero">{{ movie.overview }}</div>
+            {% endif %}
+
+            <div class="hero-actions">
+                <a class="btn-trailer"
+                   href="https://www.youtube.com/results?search_query={{ movie.title | urlencode }}+{{ movie.year }}+official+trailer"
+                   target="_blank">▶ Watch Trailer</a>
+                <a class="btn-imdb"
+                   href="https://www.google.com/search?q={{ movie.title | urlencode }}+{{ movie.year }}+IMDb"
+                   target="_blank">IMDb →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── BODY ── -->
+<div class="detail-body">
+    <a class="back-btn" href="javascript:history.back()">← Back</a>
+
+    <!-- Overview completo -->
+    {% if movie.overview %}
+    <div class="section">
+        <div class="section-label">Synopsis</div>
+        <p class="overview-full">{{ movie.overview }}</p>
+    </div>
+    <hr class="fancy-divider">
+    {% endif %}
+
+    <!-- Stats -->
+    <div class="section">
+        <div class="section-label">Details</div>
+        <div class="stats-grid">
+            {% if movie.rating %}
+            <div class="stat-card">
+                <div class="stat-label">Rating</div>
+                <div class="stat-value gold">⭐ {{ "%.1f"|format(movie.rating) }} / 10</div>
+            </div>
+            {% endif %}
+            {% if movie.year %}
+            <div class="stat-card">
+                <div class="stat-label">Year</div>
+                <div class="stat-value">{{ movie.year }}</div>
+            </div>
+            {% endif %}
+            {% if movie.runtime %}
+            <div class="stat-card">
+                <div class="stat-label">Runtime</div>
+                <div class="stat-value">{{ movie.runtime }} min</div>
+            </div>
+            {% endif %}
+            {% if movie.budget and movie.budget > 0 %}
+            <div class="stat-card">
+                <div class="stat-label">Budget</div>
+                <div class="stat-value">{{ movie.budget | int | format_budget }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Director -->
+    {% if movie.director and movie.director != 'Unknown' %}
+    <div class="section">
+        <div class="section-label">Director</div>
+        <div class="director-card">
+            <div class="director-icon">🎬</div>
+            <div>
+                <div class="director-name">{{ movie.director }}</div>
+                <div class="director-role">Director</div>
+            </div>
+        </div>
+    </div>
+    <hr class="fancy-divider">
+    {% endif %}
+
+    <!-- Cast -->
+    {% if movie.cast %}
+    <div class="section">
+        <div class="section-label">Cast</div>
+        <div class="cast-list">
+            {% for actor in movie.cast %}
+                <div class="cast-pill">{{ actor }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Géneros -->
+    {% if movie.genres %}
+    <div class="section">
+        <div class="section-label">Genres</div>
+        <div class="genres-row">
+            {% for genre in movie.genres %}
+                <span class="genre-tag">{{ genre }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Plataformas -->
+    {% if movie.platforms %}
+    <div class="section">
+        <div class="section-label">Where to Watch</div>
+        <div class="platform-list">
+            {% for platform in movie.platforms %}
+                <div class="platform-chip">{{ platform }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="section">
+        <div class="section-label">Where to Watch</div>
+        <p style="color:#555; font-size:13px; font-family:'DM Sans',sans-serif;">
+            Not available on major streaming platforms in the US right now.
+        </p>
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

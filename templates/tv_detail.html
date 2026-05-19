@@ -1,0 +1,352 @@
+{% extends "layout.html" %}
+{% block title %}{{ show.title }}{% endblock %}
+{% block main %}
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,600;1,300&display=swap');
+
+    main.container-fluid { padding: 0 !important; }
+
+    .hero {
+        position: relative;
+        min-height: 520px;
+        display: flex;
+        align-items: flex-end;
+        overflow: hidden;
+    }
+    .hero-bg {
+        position: absolute; inset: 0;
+        background-image: url('{{ show.poster }}');
+        background-size: cover;
+        background-position: center 20%;
+        filter: blur(18px) brightness(0.35) saturate(1.4);
+        transform: scale(1.08);
+        z-index: 0;
+    }
+    .hero-content {
+        position: relative; z-index: 2;
+        display: flex;
+        align-items: flex-end;
+        gap: 40px;
+        padding: 48px 60px;
+        width: 100%;
+    }
+    .poster-wrap {
+        flex-shrink: 0;
+        width: 220px;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.06);
+        transform: translateY(40px);
+        transition: transform 0.4s ease;
+    }
+    .poster-wrap:hover { transform: translateY(36px) scale(1.02); }
+    .poster-wrap img { width: 100%; display: block; }
+    .no-poster-hero {
+        width: 220px; height: 330px;
+        background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 60px; border-radius: 12px;
+        flex-shrink: 0; transform: translateY(40px);
+    }
+
+    .hero-meta { padding-bottom: 8px; text-align: left; }
+    .hero-meta h1 {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: clamp(2.4rem, 5vw, 4rem);
+        letter-spacing: 1px;
+        color: white;
+        margin: 0 0 8px;
+        line-height: 1;
+        text-shadow: 0 2px 20px rgba(0,0,0,0.6);
+    }
+    .tagline-row {
+        display: flex; align-items: center; flex-wrap: wrap;
+        gap: 10px; margin-bottom: 14px;
+    }
+    .pill {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.15);
+        backdrop-filter: blur(8px);
+        color: #ddd; font-size: 12px; font-weight: 600;
+        padding: 4px 12px; border-radius: 20px;
+        font-family: 'DM Sans', sans-serif;
+    }
+    .pill.gold { background: rgba(245,197,24,0.15); border-color: #f5c518; color: #f5c518; }
+
+    .overview-hero {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 14px; color: #ccc; font-weight: 300;
+        line-height: 1.7; max-width: 600px;
+        display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin-top: 6px;
+    }
+
+    .hero-actions { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .btn-trailer {
+        background: #f5c518; color: black;
+        font-family: 'DM Sans', sans-serif; font-weight: 700;
+        font-size: 13px; padding: 10px 24px; border-radius: 8px;
+        text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+        transition: background 0.2s, transform 0.15s;
+        border: none;
+    }
+    .btn-trailer:hover { background: #d4a900; color: black; transform: translateY(-1px); }
+    .btn-imdb {
+        background: transparent; color: #f5c518;
+        font-family: 'DM Sans', sans-serif; font-weight: 600;
+        font-size: 13px; padding: 10px 24px; border-radius: 8px;
+        text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+        border: 2px solid rgba(245,197,24,0.4);
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .btn-imdb:hover { border-color: #f5c518; background: rgba(245,197,24,0.08); color: #f5c518; }
+
+    .detail-body {
+        max-width: 1100px;
+        margin: 60px auto 80px;
+        padding: 0 40px;
+        text-align: left;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+    .section { margin-bottom: 48px; }
+    .section-label {
+        font-size: 10px; font-weight: 700; letter-spacing: 3px;
+        text-transform: uppercase; color: #f5c518;
+        margin-bottom: 16px;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .section-label::after {
+        content: ''; flex: 1; height: 1px;
+        background: linear-gradient(to right, rgba(245,197,24,0.3), transparent);
+    }
+
+    .overview-full {
+        font-size: 15px; color: #ccc; line-height: 1.8;
+        font-weight: 300; max-width: 720px;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 16px;
+    }
+    .stat-card {
+        background: #1c1c1c;
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 10px; padding: 16px 20px;
+        transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: rgba(245,197,24,0.3); }
+    .stat-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px; }
+    .stat-value { font-size: 16px; font-weight: 600; color: white; }
+    .stat-value.gold { color: #f5c518; }
+
+    .genres-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .genre-tag {
+        background: #1c1c1c; border: 1px solid rgba(255,255,255,0.1);
+        color: #ddd; font-size: 12px; font-weight: 600;
+        padding: 6px 16px; border-radius: 20px;
+        transition: all 0.2s;
+    }
+    .genre-tag:hover { border-color: #f5c518; color: #f5c518; background: rgba(245,197,24,0.05); }
+
+    .cast-list { display: flex; flex-wrap: wrap; gap: 10px; }
+    .cast-pill {
+        background: #1c1c1c;
+        border: 1px solid rgba(255,255,255,0.08);
+        color: #ccc; font-size: 12px; font-weight: 400;
+        padding: 8px 16px; border-radius: 8px;
+        display: flex; align-items: center; gap: 6px;
+    }
+    .cast-pill::before { content: '👤'; font-size: 11px; }
+
+    .platform-list { display: flex; flex-wrap: wrap; gap: 10px; }
+    .platform-chip {
+        background: linear-gradient(135deg, #222, #1a1a1a);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: white; font-size: 12px; font-weight: 600;
+        padding: 8px 18px; border-radius: 8px;
+        display: flex; align-items: center; gap: 6px;
+    }
+    .platform-chip::before { content: '▶'; color: #f5c518; font-size: 9px; }
+
+    .creator-card {
+        display: inline-flex; align-items: center; gap: 14px;
+        background: #1c1c1c; border: 1px solid rgba(245,197,24,0.2);
+        border-radius: 10px; padding: 14px 24px;
+    }
+    .creator-icon { font-size: 28px; }
+    .creator-name { font-size: 15px; font-weight: 600; color: white; }
+    .creator-role { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+
+    .back-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        color: #888; font-size: 13px; font-weight: 600;
+        text-decoration: none; margin-bottom: 32px;
+        transition: color 0.2s;
+        font-family: 'DM Sans', sans-serif;
+    }
+    .back-btn:hover { color: #f5c518; }
+
+    .fancy-divider {
+        border: none;
+        height: 1px;
+        background: linear-gradient(to right, transparent, rgba(245,197,24,0.2), transparent);
+        margin: 0 0 48px;
+    }
+
+    @media (max-width: 640px) {
+        .hero-content { flex-direction: column; align-items: flex-start; padding: 24px 20px; }
+        .poster-wrap, .no-poster-hero { width: 140px; transform: none; }
+        .detail-body { padding: 0 20px; }
+        .hero-meta h1 { font-size: 2rem; }
+    }
+</style>
+
+<!-- ── HERO ── -->
+<div class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-content">
+        {% if show.poster %}
+            <div class="poster-wrap"><img src="{{ show.poster }}" alt="{{ show.title }}"></div>
+        {% else %}
+            <div class="no-poster-hero">📺</div>
+        {% endif %}
+
+        <div class="hero-meta">
+            <h1>{{ show.title }}</h1>
+
+            <div class="tagline-row">
+                {% if show.year %}<span class="pill">{{ show.year }}</span>{% endif %}
+                {% if show.seasons %}<span class="pill">{{ show.seasons }} Season{% if show.seasons != 1 %}s{% endif %}</span>{% endif %}
+                {% if show.episodes %}<span class="pill">{{ show.episodes }} Episodes</span>{% endif %}
+                {% if show.rating %}
+                    <span class="pill gold">⭐ {{ "%.1f"|format(show.rating) }} / 10</span>
+                {% endif %}
+                {% for genre in show.genres[:2] %}
+                    <span class="pill">{{ genre }}</span>
+                {% endfor %}
+            </div>
+
+            {% if show.overview %}
+                <div class="overview-hero">{{ show.overview }}</div>
+            {% endif %}
+
+            <div class="hero-actions">
+                <a class="btn-trailer"
+                   href="https://www.youtube.com/results?search_query={{ show.title | urlencode }}+{{ show.year }}+series+trailer"
+                   target="_blank">▶ Watch Trailer</a>
+                <a class="btn-imdb"
+                   href="https://www.google.com/search?q={{ show.title | urlencode }}+{{ show.year }}+IMDb"
+                   target="_blank">IMDb →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── BODY ── -->
+<div class="detail-body">
+    <a class="back-btn" href="javascript:history.back()">← Back</a>
+
+    {% if show.overview %}
+    <div class="section">
+        <div class="section-label">Synopsis</div>
+        <p class="overview-full">{{ show.overview }}</p>
+    </div>
+    <hr class="fancy-divider">
+    {% endif %}
+
+    <div class="section">
+        <div class="section-label">Details</div>
+        <div class="stats-grid">
+            {% if show.rating %}
+            <div class="stat-card">
+                <div class="stat-label">Rating</div>
+                <div class="stat-value gold">⭐ {{ "%.1f"|format(show.rating) }} / 10</div>
+            </div>
+            {% endif %}
+            {% if show.year %}
+            <div class="stat-card">
+                <div class="stat-label">First Air Date</div>
+                <div class="stat-value">{{ show.year }}</div>
+            </div>
+            {% endif %}
+            {% if show.seasons %}
+            <div class="stat-card">
+                <div class="stat-label">Seasons</div>
+                <div class="stat-value">{{ show.seasons }}</div>
+            </div>
+            {% endif %}
+            {% if show.episodes %}
+            <div class="stat-card">
+                <div class="stat-label">Episodes</div>
+                <div class="stat-value">{{ show.episodes }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if show.creators %}
+    <div class="section">
+        <div class="section-label">Created By</div>
+        <div style="display:flex; flex-wrap:wrap; gap:12px;">
+            {% for creator in show.creators %}
+            <div class="creator-card">
+                <div class="creator-icon">📺</div>
+                <div>
+                    <div class="creator-name">{{ creator }}</div>
+                    <div class="creator-role">Creator</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <hr class="fancy-divider">
+    {% endif %}
+
+    {% if show.cast %}
+    <div class="section">
+        <div class="section-label">Cast</div>
+        <div class="cast-list">
+            {% for actor in show.cast %}
+                <div class="cast-pill">{{ actor }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if show.genres %}
+    <div class="section">
+        <div class="section-label">Genres</div>
+        <div class="genres-row">
+            {% for genre in show.genres %}
+                <span class="genre-tag">{{ genre }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if show.platforms %}
+    <div class="section">
+        <div class="section-label">Where to Watch</div>
+        <div class="platform-list">
+            {% for platform in show.platforms %}
+                <div class="platform-chip">{{ platform }}</div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="section">
+        <div class="section-label">Where to Watch</div>
+        <p style="color:#555; font-size:13px; font-family:'DM Sans',sans-serif;">
+            Not available on major streaming platforms in the US right now.
+        </p>
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

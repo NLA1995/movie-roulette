@@ -1,0 +1,91 @@
+{% extends "layout.html" %}
+{% block title %}News{% endblock %}
+{% block main %}
+<style>
+    .news-grid { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; padding:20px 0; }
+    .news-card {
+        width:280px; border-radius:10px; overflow:hidden;
+        background-color:#1c1c1c; color:white;
+        box-shadow:0 4px 14px rgba(0,0,0,0.3);
+        transition:transform 0.2s; display:flex; flex-direction:column;
+    }
+    .news-card:hover { transform:scale(1.03); }
+    .news-card img { width:100%; height:160px; object-fit:cover; }
+    .no-img {
+        width:100%; height:160px;
+        background:linear-gradient(135deg,#2a2a2a,#1a1a1a);
+        display:flex; align-items:center; justify-content:center;
+        color:#555; font-size:36px;
+    }
+    .news-body { padding:14px; flex:1; display:flex; flex-direction:column; }
+    .source-badge { font-size:10px; font-weight:bold; color:#f5c518; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
+    .news-body h5 { font-size:14px; font-weight:bold; margin-bottom:8px; color:white; line-height:1.4; }
+    .news-body p { font-size:12px; color:#bbb; flex:1; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; line-height:1.5; }
+    .news-date { font-size:11px; color:#666; margin:6px 0; }
+    .btn-read {
+        margin-top:10px; background-color:#f5c518; color:black;
+        border:none; padding:7px 16px; border-radius:6px;
+        font-size:12px; font-weight:bold; text-decoration:none;
+        display:inline-block; transition:background-color 0.2s;
+    }
+    .btn-read:hover { background-color:#d4a900; color:black; }
+    .section-title { color:#f5c518; border-bottom:2px solid #f5c518; padding-bottom:6px; margin:30px 0 16px; }
+    .sources-footer { margin-top:40px; padding:16px; background-color:#1c1c1c; border-radius:8px; font-size:12px; color:#888; }
+    .sources-footer a { color:#f5c518; text-decoration:none; }
+    .sources-footer a:hover { text-decoration:underline; }
+</style>
+
+<h1>📰 Movie News</h1>
+
+<h3 class="section-title">Deadline Hollywood</h3>
+<div class="news-grid">
+    {% if deadline_articles %}
+        {% for a in deadline_articles %}
+        <div class="news-card">
+            {% if a.image %}<img src="{{ a.image }}" alt="{{ a.title }}">
+            {% else %}<div class="no-img">🎬</div>{% endif %}
+            <div class="news-body">
+                <div class="source-badge">Deadline</div>
+                <h5>{{ a.title }}</h5>
+                <div class="news-date">{{ a.date }}</div>
+                <p>{{ a.summary }}</p>
+                <a class="btn-read" href="{{ a.link }}" target="_blank">Read Article</a>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="color:#888;">Could not load articles. Try again later.</p>
+    {% endif %}
+</div>
+
+<h3 class="section-title">The Hollywood Reporter</h3>
+<div class="news-grid">
+    {% if thr_articles %}
+        {% for a in thr_articles %}
+        <div class="news-card">
+            {% if a.image %}<img src="{{ a.image }}" alt="{{ a.title }}">
+            {% else %}<div class="no-img">🎥</div>{% endif %}
+            <div class="news-body">
+                <div class="source-badge">Hollywood Reporter</div>
+                <h5>{{ a.title }}</h5>
+                <div class="news-date">{{ a.date }}</div>
+                <p>{{ a.summary }}</p>
+                <a class="btn-read" href="{{ a.link }}" target="_blank">Read Article</a>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="color:#888;">Could not load articles. Try again later.</p>
+    {% endif %}
+</div>
+
+<!-- PIE DE PÁGINA DE FUENTES -->
+<div class="sources-footer">
+    📌 Articles sourced from
+    <a href="https://deadline.com" target="_blank">Deadline Hollywood</a>
+    and
+    <a href="https://www.hollywoodreporter.com" target="_blank">The Hollywood Reporter</a>.
+    All rights belong to their respective publishers.
+</div>
+
+{% endblock %}
