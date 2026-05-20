@@ -74,7 +74,7 @@
 </form>
 
 {% if shows %}
-<h3 class="results-title">Top {{ shows|length }} — {{ selected_genre }}</h3>
+<h3 class="results-title" id="results">Top {{ shows|length }} — {{ selected_genre }}</h3>
 <div class="shows-grid">
     {% for show in shows %}
     <a href="/tv/{{ show.tmdb_id }}" style="text-decoration:none; color:inherit;">
@@ -92,4 +92,11 @@
 </div>
 {% endif %}
 
+{% if shows %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+</script>
+{% endif %}
 {% endblock %}

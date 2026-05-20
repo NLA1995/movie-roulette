@@ -70,7 +70,7 @@
 </form>
 
 {% if movies %}
-<h3 class="results-title">Top {{ movies|length }} — {{ selected_genre }}</h3>
+<h3 class="results-title" id="results">Top {{ movies|length }} — {{ selected_genre }}</h3>
 <div class="movies-grid">
     {% for movie in movies %}
     <div class="movie-card">
@@ -88,5 +88,13 @@
     </div>
     {% endfor %}
 </div>
+{% endif %}
+
+{% if movies %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+</script>
 {% endif %}
 {% endblock %}
