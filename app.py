@@ -8,12 +8,10 @@ from plotly.utils import PlotlyJSONEncoder
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from cs50 import SQL
-from flask import Flask, flash, redirect, render_template, request, session
-from flask_session import Session
-from werkzeug.security import check_password_hash, generate_password_hash
+from flask import Flask, redirect, render_template, request
 
 from helpers import (
-    apology, login_required,
+    apology,
     tmdb_search, tmdb_search_popular, tmdb_search_tv,
     tmdb_search_with_country, tmdb_by_genre, tmdb_detail,
     tmdb_now_playing, tmdb_upcoming,
@@ -23,10 +21,6 @@ from helpers import (
 )
 
 app = Flask(__name__)
-app.config["SESSION_PERMANENT"] = False
-app.config["SESSION_TYPE"] = "filesystem"
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-prod")
-Session(app)
 
 db = SQL("sqlite:///movies.db")
 
@@ -46,7 +40,6 @@ def after_request(response):
 
 # ── INDEX ──────────────────────────────────────────────────────────────────
 @app.route("/")
-@login_required
 def index():
     """Home page: display 15 randomly selected well-rated films from different years.
 
@@ -112,7 +105,6 @@ def index():
 
 # ── NEWS ────────────────────────────────────────────────────────────────────
 @app.route("/news")
-@login_required
 def news():
     """Fetch and display the latest articles from Deadline and The Hollywood Reporter."""
     deadline_articles, thr_articles = get_news_articles()
@@ -123,7 +115,6 @@ def news():
 
 # ── TRENDING ────────────────────────────────────────────────────────────────
 @app.route("/trending")
-@login_required
 def trending():
     """Display movies currently in theaters and upcoming releases from TMDB."""
     now_playing = tmdb_now_playing()
@@ -133,7 +124,6 @@ def trending():
 
 # ── MOVIES ──────────────────────────────────────────────────────────────────
 @app.route("/recomendations", methods=["GET", "POST"])
-@login_required
 def recomendations():
     """Show movie recommendations filtered by genre.
 
@@ -151,7 +141,6 @@ def recomendations():
 
 # ── TV SHOWS ────────────────────────────────────────────────────────────────
 @app.route("/tvshows", methods=["GET", "POST"])
-@login_required
 def tvshows():
     """Show TV show recommendations filtered by genre.
 
@@ -169,7 +158,6 @@ def tvshows():
 
 # ── SEARCH ──────────────────────────────────────────────────────────────────
 @app.route("/search", methods=["GET", "POST"])
-@login_required
 def search():
     """Search for movies and TV shows simultaneously via TMDB.
 
@@ -198,7 +186,6 @@ def search():
 
 # ── TV SHOW DETAIL ──────────────────────────────────────────────────────────
 @app.route("/tv/<int:tmdb_id>")
-@login_required
 def tv_detail(tmdb_id):
     """Render the full detail page for a single TV show identified by its TMDB ID."""
     show = tmdb_tv_detail(tmdb_id)
@@ -209,7 +196,6 @@ def tv_detail(tmdb_id):
 
 # ── MOVIE DETAIL ────────────────────────────────────────────────────────────
 @app.route("/movie/<int:tmdb_id>")
-@login_required
 def movie_detail(tmdb_id):
     """Render the full detail page for a single movie identified by its TMDB ID."""
     movie = tmdb_detail(tmdb_id)
@@ -220,14 +206,12 @@ def movie_detail(tmdb_id):
 
 # ── DASHBOARD ────────────────────────────────────────────────────────────────
 @app.route("/dashboard")
-@login_required
 def dashboard():
     """Render the analytics dashboard shell; chart data is loaded via AJAX."""
     return render_template("dashboard.html")
 
 
 @app.route("/dashboard/genres-data")
-@login_required
 def dashboard_genres_data():
     """Return a Plotly heatmap figure (JSON) of film counts per genre per decade.
 
@@ -258,7 +242,6 @@ def dashboard_genres_data():
 
 
 @app.route("/dashboard/budget-data")
-@login_required
 def dashboard_budget_data():
     """Return a Plotly scatter + regression line figure of budget vs. TMDB rating."""
     data = get_budget_vs_rating()
@@ -339,7 +322,6 @@ def dashboard_budget_data():
 
 
 @app.route("/dashboard/roi-data")
-@login_required
 def dashboard_roi_data():
     """Return a Plotly bar chart of median ROI by genre."""
     data = get_roi_by_genre()
@@ -384,69 +366,3 @@ def dashboard_roi_data():
         mimetype="application/json"
     )
 
-
-# ── LOGIN ────────────────────────────────────────────────────────────────────
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    """Authenticate an existing user and start a session.
-
-    On GET renders the login form. On POST validates username and password
-    against the database; on success stores user_id in the session and
-    redirects to the home page.
-    """
-    session.clear()
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
-        if not username:
-            flash("Please enter your username.", "danger")
-            return render_template("login.html")
-        if not password:
-            flash("Please enter your password.", "danger")
-            return render_template("login.html")
-        rows = db.execute("SELECT * FROM users WHERE username = ?", username)
-        if len(rows) != 1 or not check_password_hash(rows[0]["hash"], password):
-            flash("Incorrect username or password. Please try again.", "danger")
-            return render_template("login.html")
-        session["user_id"] = rows[0]["id"]
-        return redirect("/")
-    return render_template("login.html")
-
-
-# ── LOGOUT ───────────────────────────────────────────────────────────────────
-@app.route("/logout")
-def logout():
-    """Clear the session and redirect to the login page."""
-    session.clear()
-    return redirect("/")
-
-
-# ── REGISTER ─────────────────────────────────────────────────────────────────
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    """Register a new user account.
-
-    On GET renders the registration form. On POST validates that the username
-    is not already taken, that the password is at least 6 characters, and that
-    the confirmation matches. Stores a hashed password and redirects to login.
-    """
-    if request.method == "POST":
-        if not request.form.get("username"):
-            return apology("must provide username", 400)
-        if not request.form.get("password"):
-            return apology("must provide password", 400)
-        if not request.form.get("confirmation"):
-            return apology("must provide password confirmation", 400)
-        psw  = request.form.get("password")
-        pswc = request.form.get("confirmation")
-        if len(psw) < 6:
-            return apology("password must be at least 6 characters")
-        if psw != pswc:
-            return apology("passwords do not coincide", 400)
-        hashed_psw  = generate_password_hash(psw, method='pbkdf2:sha256', salt_length=8)
-        username    = request.form.get("username")
-        if db.execute("SELECT * FROM users WHERE username = ?", username):
-            return apology("username already in use", 400)
-        db.execute("INSERT INTO users (username, hash) VALUES (?,?)", username, hashed_psw)
-        return redirect("/")
-    return render_template("register.html")

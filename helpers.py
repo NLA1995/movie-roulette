@@ -6,8 +6,7 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from flask import redirect, render_template, request, session
-from functools import wraps
+from flask import render_template, request
 
 TMDB_API_KEY = os.environ.get("TMDB_API_KEY")
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
@@ -37,15 +36,6 @@ def apology(message, code=400):
         return s
     return render_template("apology.html", top=code, bottom=escape(message)), code
 
-
-def login_required(f):
-    """Redirect unauthenticated users to /login before serving the wrapped route."""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if session.get("user_id") is None:
-            return redirect("/login")
-        return f(*args, **kwargs)
-    return decorated_function
 
 
 # ── TMDB: search movie ─────────────────────────────────────────────────────

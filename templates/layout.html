@@ -91,33 +91,25 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbar">
-                {% if session["user_id"] %}
-                    <ul class="navbar-nav me-auto mt-2">
-                        <li class="nav-item"><a class="nav-link text-white" href="/recomendations"><i data-lucide="clapperboard"></i> Movies</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="/tvshows"><i data-lucide="tv-2"></i> TV Shows</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="/trending"><i data-lucide="flame"></i> Trending</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="/news"><i data-lucide="newspaper"></i> News</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="/dashboard"><i data-lucide="bar-chart-2"></i> Dashboards</a></li>
-                    </ul>
-                    <form class="search-form d-flex mx-3 mt-2" action="/search" method="POST">
-                        <input name="query" type="text" placeholder="Search a movie or TV show...">
-                        <button type="submit"><i data-lucide="search" style="width:14px;height:14px;stroke:black;stroke-width:2.5"></i></button>
-                    </form>
-                    <ul class="navbar-nav ms-auto mt-2 align-items-center">
-                        <li class="nav-item me-2">
-                            <button class="lang-toggle" id="langBtn" onclick="toggleLang()">
-                                <i data-lucide="languages" style="width:14px;height:14px;"></i>
-                                <span id="langLabel">ES</span>
-                            </button>
-                        </li>
-                        <li class="nav-item"><a class="nav-link text-white" href="/logout">Log Out</a></li>
-                    </ul>
-                {% else %}
-                    <ul class="navbar-nav ms-auto mt-2">
-                        <li class="nav-item"><a class="nav-link text-white" href="/register">Register</a></li>
-                        <li class="nav-item"><a class="nav-link text-white" href="/login">Log In</a></li>
-                    </ul>
-                {% endif %}
+                <ul class="navbar-nav me-auto mt-2">
+                    <li class="nav-item"><a class="nav-link text-white" href="/recomendations"><i data-lucide="clapperboard"></i> Movies</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/tvshows"><i data-lucide="tv-2"></i> TV Shows</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/trending"><i data-lucide="flame"></i> Trending</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/news"><i data-lucide="newspaper"></i> News</a></li>
+                    <li class="nav-item"><a class="nav-link text-white" href="/dashboard"><i data-lucide="bar-chart-2"></i> Dashboards</a></li>
+                </ul>
+                <form class="search-form d-flex mx-3 mt-2" action="/search" method="POST">
+                    <input name="query" type="text" placeholder="Search a movie or TV show...">
+                    <button type="submit"><i data-lucide="search" style="width:14px;height:14px;stroke:black;stroke-width:2.5"></i></button>
+                </form>
+                <ul class="navbar-nav ms-auto mt-2 align-items-center">
+                    <li class="nav-item me-2">
+                        <button class="lang-toggle" id="langBtn" onclick="toggleLang()">
+                            <i data-lucide="languages" style="width:14px;height:14px;"></i>
+                            <span id="langLabel">ES</span>
+                        </button>
+                    </li>
+                </ul>
             </div>
         </div>
     </nav>
