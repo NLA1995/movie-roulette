@@ -8,7 +8,7 @@ from plotly.utils import PlotlyJSONEncoder
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from cs50 import SQL
-from flask import Flask, redirect, render_template, request
+from flask import Flask, jsonify, redirect, render_template, request
 
 from helpers import (
     apology,
@@ -41,7 +41,13 @@ def after_request(response):
 # ── INDEX ──────────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
-    """Home page: display 15 randomly selected well-rated films from different years.
+    """Render the home page shell instantly; movie data loads via AJAX."""
+    return render_template("index.html")
+
+
+@app.route("/movies-data")
+def movies_data():
+    """Return 15 random well-rated films as JSON for the homepage AJAX call.
 
     Picks 15 random years between 1940 and 2024, queries the local database for
     one highly rated film per year (rating >= 5.0, votes >= 1000), then enriches
@@ -97,7 +103,7 @@ def index():
         for future in as_completed(futures):
             result[futures[future]] = future.result()
 
-    return render_template("index.html", mov=result)
+    return jsonify(result)
 
 
 # ── NEWS ────────────────────────────────────────────────────────────────────

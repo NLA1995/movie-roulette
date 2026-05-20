@@ -27,7 +27,6 @@
         overflow:hidden; display:-webkit-box;
         -webkit-line-clamp:3; -webkit-box-orient:vertical;
     }
-    /* Hover expande el overview completo */
     .movie-card:hover .overview {
         display:block; overflow:visible;
         position:absolute; left:0; right:0;
@@ -44,35 +43,81 @@
         font-weight:bold; cursor:pointer; margin-bottom:24px;
         transition:background-color 0.2s;
     }
-    .spin-btn:hover { background-color:#d4a900; }
+    .spin-btn:hover:not(:disabled) { background-color:#d4a900; }
+    .spin-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+    /* Spinner */
+    .spinner-wrap {
+        display:flex; flex-direction:column; align-items:center;
+        justify-content:center; gap:16px; padding:60px 0;
+        width:100%;
+    }
+    .spinner {
+        width:48px; height:48px;
+        border:4px solid #333;
+        border-top-color:#f5c518;
+        border-radius:50%;
+        animation:spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spinner-label { color:#aaa; font-size:14px; }
 </style>
 
 <h1><i data-lucide="shuffle" style="width:36px;height:36px;stroke:#f5c518;stroke-width:2;vertical-align:middle;margin-right:10px;margin-bottom:6px;"></i>Movie Roulette</h1>
 <p class="subtitle">Spin for 15 random picks from the IMDb database</p>
-<form method="GET" action="/">
-    <button class="spin-btn" type="submit">🎲 Spin Again</button>
-</form>
+<button class="spin-btn" id="spinBtn" onclick="spin()">🎲 Spin Again</button>
 
-<div class="movie-grid">
-    {% for i in mov %}
-    <div class="movie-card">
-        {% if i.tmdb_id %}
-        <a class="card-link" href="/movie/{{ i.tmdb_id }}">
-        {% else %}
-        <a class="card-link" href="https://www.youtube.com/results?search_query={{ i.title }}+{{ i.year }}+movie+trailer" target="_blank">
-        {% endif %}
-            {% if i.poster %}
-                <img src="{{ i.poster }}" alt="{{ i.title }}">
-            {% else %}
-                <div class="no-poster">No poster</div>
-            {% endif %}
-            <div class="card-info">
-                <div class="card-title" style="font-weight:bold; font-size:13px;">{{ i.title }}</div>
-                <div class="meta">{{ i.year }} &nbsp;|&nbsp; <span class="rating">⭐ {{ i.rating }}</span>{% if i.country %} &nbsp;|&nbsp; 🌍 {{ i.country }}{% endif %}</div>
-                {% if i.overview %}<div class="overview">{{ i.overview }}</div>{% endif %}
-            </div>
-        </a>
-    </div>
-    {% endfor %}
-</div>
+<div id="movie-grid" class="movie-grid"></div>
+
+<script>
+function buildCard(m) {
+    const href = m.tmdb_id
+        ? `/movie/${m.tmdb_id}`
+        : `https://www.youtube.com/results?search_query=${encodeURIComponent(m.title + ' ' + m.year + ' movie trailer')}`;
+    const target = m.tmdb_id ? '' : 'target="_blank"';
+    const poster = m.poster
+        ? `<img src="${m.poster}" alt="${m.title}">`
+        : `<div class="no-poster">No poster</div>`;
+    const country = m.country ? ` &nbsp;|&nbsp; 🌍 ${m.country}` : '';
+    const overview = m.overview ? `<div class="overview">${m.overview}</div>` : '';
+
+    return `
+        <div class="movie-card">
+            <a class="card-link" href="${href}" ${target}>
+                ${poster}
+                <div class="card-info">
+                    <div class="card-title" style="font-weight:bold;font-size:13px;">${m.title}</div>
+                    <div class="meta">${m.year} &nbsp;|&nbsp; <span class="rating">⭐ ${m.rating}</span>${country}</div>
+                    ${overview}
+                </div>
+            </a>
+        </div>`;
+}
+
+function spin() {
+    const btn  = document.getElementById('spinBtn');
+    const grid = document.getElementById('movie-grid');
+    btn.disabled = true;
+    grid.innerHTML = `
+        <div class="spinner-wrap">
+            <div class="spinner"></div>
+            <div class="spinner-label">Picking your movies…</div>
+        </div>`;
+
+    fetch('/movies-data')
+        .then(r => r.json())
+        .then(movies => {
+            grid.innerHTML = movies.map(buildCard).join('');
+            lucide.createIcons();
+            btn.disabled = false;
+        })
+        .catch(() => {
+            grid.innerHTML = '<p style="color:#e05c5c;margin-top:40px;">Could not load movies. Try again.</p>';
+            btn.disabled = false;
+        });
+}
+
+// Load automatically on page open
+spin();
+</script>
 {% endblock %}
