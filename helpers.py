@@ -767,13 +767,26 @@ def get_roi_by_genre():
     return _get_cached("roi_by_genre", fetch)
 
 
-def get_homepage_pool():
-    """Return a cached pool of ~400 well-rated movies spanning multiple decades.
+# Maps TMDB original_language → country name (no extra API call needed)
+_LANG_COUNTRY = {
+    "en": "United States", "fr": "France",  "de": "Germany",
+    "ja": "Japan",         "ko": "South Korea", "es": "Spain",
+    "it": "Italy",         "pt": "Brazil",  "zh": "China",
+    "hi": "India",         "ru": "Russia",  "da": "Denmark",
+    "sv": "Sweden",        "no": "Norway",  "nl": "Netherlands",
+    "pl": "Poland",        "tr": "Turkey",  "ar": "Egypt",
+}
 
-    Fires 28 concurrent TMDB requests (7 decades × 4 pages each), deduplicates
-    by tmdb_id, and shuffles the result. Cached for 1 hour. index() draws a
-    random 15 from the ~400-movie pool on each request — very low repeat rate
-    across consecutive spins.
+
+def get_homepage_pool():
+    """Return a cached pool of ~400 varied movies spanning multiple decades.
+
+    For each decade, picks 4 random pages (from a range of 1-15) and fetches
+    them concurrently. Using random pages on every cache refresh means the pool
+    changes each hour, adding variety on top of the already-random 15 drawn per
+    spin. vote_count threshold is kept at 300 to include less mainstream films.
+    Country is derived from original_language — no extra API call needed.
+    Cached for 1 hour.
     """
     def fetch():
         decades = [
@@ -794,7 +807,7 @@ def get_homepage_pool():
                         "api_key":                  TMDB_API_KEY,
                         "language":                 "en-US",
                         "sort_by":                  "vote_count.desc",
-                        "vote_count.gte":           1000,
+                        "vote_count.gte":           300,
                         "vote_average.gte":         5.0,
                         "primary_release_date.gte": gte,
                         "primary_release_date.lte": lte,
@@ -811,17 +824,20 @@ def get_homepage_pool():
                         "poster":   TMDB_IMG_BASE + m["poster_path"] if m.get("poster_path") else None,
                         "overview": m.get("overview"),
                         "tmdb_id":  m.get("id"),
-                        "country":  None,
+                        "country":  _LANG_COUNTRY.get(m.get("original_language")),
                     }
                     for m in r.json().get("results", [])
                 ]
             except Exception:
                 return []
 
-        # 7 decades × 4 pages = 28 concurrent requests → ~400 unique movies
-        combos = [(gte, lte, page)
-                  for _, gte, lte in decades
-                  for page in range(1, 5)]
+        # Each refresh picks 4 random pages per decade (from a range of 1-15)
+        # → different pool every hour, ~400 unique movies per session
+        combos = [
+            (gte, lte, page)
+            for _, gte, lte in decades
+            for page in random.sample(range(1, 16), 4)
+        ]
 
         pool, seen = [], set()
         with ThreadPoolExecutor(max_workers=len(combos)) as ex:
