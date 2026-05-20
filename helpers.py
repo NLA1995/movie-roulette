@@ -727,7 +727,7 @@ def get_roi_by_genre():
                 timeout=6,
             )
             r.raise_for_status()
-            ids = [m["id"] for m in r.json().get("results", [])[:8]]
+            ids = [m["id"] for m in r.json().get("results", [])[:10]]
         except Exception:
             return (genre_name, [], 0)
 
