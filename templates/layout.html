@@ -67,6 +67,25 @@
         body { top: 0 !important; }
         .goog-te-gadget { display: none !important; }
 
+        /* ── Mobile ─────────────────────────────────────────── */
+        @media (max-width: 991px) {
+            /* Reduce main vertical padding */
+            main.container-fluid { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+
+            /* Search bar full-width inside collapsed menu */
+            .search-form { width: 100%; margin: 0.5rem 0 !important; }
+            .search-form input { flex: 1; width: auto; }
+
+            /* Navbar links slightly smaller */
+            .nav-link { font-size: 0.9rem; }
+
+            /* Lang toggle inside collapsed menu */
+            .lang-toggle { width: 100%; justify-content: center; margin-top: 0.5rem; }
+
+            /* Smaller headings */
+            h1 { font-size: 1.5rem; }
+        }
+
         /* Botón EN/ES */
         .lang-toggle {
             display: flex; align-items: center; gap: 6px;
@@ -83,7 +102,7 @@
     </style>
 </head>
 <body>
-    <nav class="bg-dark border navbar navbar-expand-md navbar-dark">
+    <nav class="bg-dark border navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="/"><i data-lucide="shuffle"></i> Movie Roulette</a>
             <button aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation"

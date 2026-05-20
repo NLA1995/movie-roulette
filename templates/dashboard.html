@@ -33,6 +33,15 @@
         gap: 0.75rem;
         font-size: 0.95rem;
     }
+
+    @media (max-width: 991px) {
+        .dash-card { padding: 1rem 0.75rem; }
+        .spinner-wrap { height: 260px; }
+        .dash-title { font-size: 0.9rem; }
+        .dash-subtitle { font-size: 0.8rem; margin-bottom: 1rem; }
+        /* Article tables scroll horizontally on small screens */
+        table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    }
 </style>
 
 <div class="text-start mb-4">
@@ -536,6 +545,17 @@
         locale: "en"
     };
 
+    const isMobile = window.innerWidth < 992;
+
+    function mobileLayout(layout) {
+        if (!isMobile) return layout;
+        return Object.assign({}, layout, {
+            margin: { l: 40, r: 10, t: 50, b: 60 },
+            font: Object.assign({}, layout.font, { size: 11 }),
+            title: Object.assign({}, layout.title, { font: { size: 13, color: "white", family: "Inter" } }),
+        });
+    }
+
     function loadChart(endpoint, elementId) {
         fetch(endpoint)
             .then(r => {
@@ -544,7 +564,7 @@
             })
             .then(fig => {
                 document.getElementById(elementId).innerHTML = '';
-                Plotly.newPlot(elementId, fig.data, fig.layout, plotConfig);
+                Plotly.newPlot(elementId, fig.data, mobileLayout(fig.layout), plotConfig);
             })
             .catch(() => {
                 document.getElementById(elementId).innerHTML =
