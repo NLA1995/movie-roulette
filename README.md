@@ -92,8 +92,8 @@ project_V02/
 
 **1. Clone the repo and install dependencies**
 ```bash
-git clone <your-repo-url>
-cd project_V02
+git clone https://github.com/NLA1995/movie-roulette.git
+cd movie-roulette
 pip install -r requirements.txt
 ```
 
