@@ -571,7 +571,8 @@ def _get_cached(key, fn):
     if key in _dash_cache and now - _dash_cache[key]["ts"] < _CACHE_TTL:
         return _dash_cache[key]["data"]
     data = fn()
-    _dash_cache[key] = {"data": data, "ts": now}
+    if data:
+        _dash_cache[key] = {"data": data, "ts": now}
     return data
 
 
