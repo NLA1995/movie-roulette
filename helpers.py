@@ -222,7 +222,7 @@ def tmdb_by_genre(genre_name, pages=1):
                     "title":    item.get("title"),
                     "year":     item.get("release_date", "")[:4],
                     "overview": item.get("overview"),
-                    "rating":   item.get("vote_average"),
+                    "rating":   round(item.get("vote_average", 0), 2),
                     "poster":   TMDB_IMG_BASE + item["poster_path"] if item.get("poster_path") else None,
                     "tmdb_id":  item.get("id"),
                 })
@@ -256,7 +256,7 @@ def tmdb_tv_by_genre(genre_name, pages=1):
                     "title":    item.get("name"),
                     "year":     item.get("first_air_date", "")[:4],
                     "overview": item.get("overview"),
-                    "rating":   item.get("vote_average"),
+                    "rating":   round(item.get("vote_average", 0), 2),
                     "poster":   TMDB_IMG_BASE + item["poster_path"] if item.get("poster_path") else None,
                     "tmdb_id":  item.get("id"),
                 })
