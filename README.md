@@ -49,13 +49,12 @@ All charts are loaded asynchronously via AJAX to keep the initial page render fa
 
 | Layer | Technology |
 |---|---|
-| Backend | Python 3, Flask, Flask-Session |
+| Backend | Python 3, Flask |
 | Database | SQLite via cs50 SQL |
 | External API | TMDB (The Movie Database) |
 | Data source | IMDb open datasets |
 | Charts | Plotly |
 | Frontend | Bootstrap 5, custom CSS, Lucide icons |
-| Auth | Werkzeug password hashing (pbkdf2:sha256) |
 | Concurrency | `concurrent.futures.ThreadPoolExecutor` |
 
 ---
@@ -65,7 +64,7 @@ All charts are loaded asynchronously via AJAX to keep the initial page render fa
 ```
 project_V02/
 ├── app.py               # Flask routes
-├── helpers.py           # TMDB API calls, RSS parser, auth helpers
+├── helpers.py           # TMDB API calls, RSS parser, data helpers
 ├── update_movies_db.py  # Script to refresh movies.db from IMDb dumps
 ├── movies.db            # SQLite database (titles, years, ratings)
 ├── requirements.txt
@@ -81,9 +80,7 @@ project_V02/
     ├── trending.html
     ├── search.html
     ├── news.html
-    ├── dashboard.html
-    ├── login.html
-    └── register.html
+    └── dashboard.html
 ```
 
 ---
@@ -104,7 +101,6 @@ Create a free account at [themoviedb.org](https://www.themoviedb.org/), go to **
 **3. Create a `.env` file in the project root**
 ```
 TMDB_API_KEY=your-tmdb-api-key-here
-SECRET_KEY=any-random-string-here
 ```
 
 **4. Run the development server**
@@ -138,9 +134,8 @@ python update_movies_db.py
 | Variable | Description |
 |---|---|
 | `TMDB_API_KEY` | Your TMDB API key — get one free at [themoviedb.org](https://www.themoviedb.org/) |
-| `SECRET_KEY` | Flask session secret — any random string works for local dev |
 
-Both variables are loaded from a `.env` file locally (via `python-dotenv`) and from the environment in production.
+Loaded from a `.env` file locally (via `python-dotenv`) and from the environment in production.
 
 ---
 
@@ -150,7 +145,7 @@ Both variables are loaded from a `.env` file locally (via `python-dotenv`) and f
 2. Create a new **Web Service** on [Render](https://render.com)
 3. Set **Build Command**: `pip install -r requirements.txt`
 4. Set **Start Command**: `gunicorn app:app`
-5. Add `TMDB_API_KEY` and `SECRET_KEY` in the Render environment variables panel
+5. Add `TMDB_API_KEY` in the Render environment variables panel
 6. Deploy
 
 ---
@@ -159,4 +154,4 @@ Both variables are loaded from a `.env` file locally (via `python-dotenv`) and f
 
 The UI is dark and minimal by design — keeping focus on the posters and content rather than the interface itself. Bootstrap handles the responsive layout and navbar; custom CSS takes over for the detail pages, genre grids and card hover effects. Genre buttons use real background images with brightness and zoom effects for a more cinematic feel, matching what you'd find on a proper streaming platform.
 
-Password validation requires a minimum of 6 characters. Sessions are server-side (filesystem) via Flask-Session.
+The app requires no login — anyone can browse immediately, keeping the focus on content discovery.
