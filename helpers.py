@@ -714,7 +714,7 @@ def get_roi_by_genre():
         mid = n // 2
         return (s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2)
 
-    def _fetch_genre_roi(genre_name, genre_id):
+    def _fetch_genre_ids(genre_name, genre_id):
         try:
             r = requests.get(
                 f"{TMDB_BASE_URL}/discover/movie",
@@ -727,39 +727,49 @@ def get_roi_by_genre():
                 timeout=6,
             )
             r.raise_for_status()
-            ids = [m["id"] for m in r.json().get("results", [])[:10]]
+            return (genre_name, [m["id"] for m in r.json().get("results", [])[:10]])
         except Exception:
-            return (genre_name, [], 0)
-
-        rois = []
-        with ThreadPoolExecutor(max_workers=10) as ex:
-            futs = [ex.submit(_fetch_detail_for_dash, tid) for tid in ids]
-            for fut in as_completed(futs):
-                d = fut.result()
-                if not d:
-                    continue
-                budget  = d.get("budget", 0)
-                revenue = d.get("revenue", 0)
-                if budget > 5_000_000 and revenue > 1_000_000:
-                    rois.append((revenue - budget) / budget * 100)
-
-        return (genre_name, rois, len(rois))
+            return (genre_name, [])
 
     def fetch():
-        results = []
+        # Step 1: fetch all genre ID lists concurrently
+        genre_ids = {}
         with ThreadPoolExecutor(max_workers=len(TMDB_GENRES)) as ex:
-            futs = [
-                ex.submit(_fetch_genre_roi, name, gid)
-                for name, gid in TMDB_GENRES.items()
-            ]
+            futs = {ex.submit(_fetch_genre_ids, name, gid): name
+                    for name, gid in TMDB_GENRES.items()}
             for fut in as_completed(futs):
-                genre_name, rois, n = fut.result()
-                if n >= 3:
-                    results.append({
-                        "genre":       genre_name,
-                        "roi":         round(_median(rois), 1),
-                        "sample_size": n,
-                    })
+                genre_name, ids = fut.result()
+                if ids:
+                    genre_ids[genre_name] = ids
+
+        # Step 2: fetch all movie details in a single flat pool
+        all_ids = [(genre, tid) for genre, ids in genre_ids.items() for tid in ids]
+        detail_map = {}
+        with ThreadPoolExecutor(max_workers=20) as ex:
+            futs = {ex.submit(_fetch_detail_for_dash, tid): (genre, tid)
+                    for genre, tid in all_ids}
+            for fut in as_completed(futs):
+                genre, tid = futs[fut]
+                d = fut.result()
+                if d:
+                    detail_map[(genre, tid)] = d
+
+        # Step 3: compute ROI per genre
+        genre_rois = {name: [] for name in genre_ids}
+        for (genre, tid), d in detail_map.items():
+            budget  = d.get("budget", 0)
+            revenue = d.get("revenue", 0)
+            if budget > 5_000_000 and revenue > 1_000_000:
+                genre_rois[genre].append((revenue - budget) / budget * 100)
+
+        results = []
+        for genre, rois in genre_rois.items():
+            if len(rois) >= 3:
+                results.append({
+                    "genre":       genre,
+                    "roi":         round(_median(rois), 1),
+                    "sample_size": len(rois),
+                })
         return sorted(results, key=lambda x: x["roi"], reverse=True)
 
     return _get_cached("roi_by_genre", fetch)
