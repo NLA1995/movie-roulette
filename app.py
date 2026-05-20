@@ -7,7 +7,6 @@ import plotly.graph_objects as go
 from plotly.utils import PlotlyJSONEncoder
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from cs50 import SQL
 from flask import Flask, redirect, render_template, request
 
 from helpers import (
@@ -18,11 +17,10 @@ from helpers import (
     tmdb_tv_by_genre, tmdb_tv_detail, get_news_articles,
     TMDB_GENRES, TMDB_TV_GENRES, usd,
     get_genres_by_decade, get_budget_vs_rating, get_roi_by_genre,
+    get_homepage_pool,
 )
 
 app = Flask(__name__)
-
-db = SQL("sqlite:///movies.db")
 
 @app.template_filter('format_budget')
 def format_budget(value):
@@ -41,66 +39,15 @@ def after_request(response):
 # ── INDEX ──────────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
-    """Home page: display 15 randomly selected well-rated films from different years.
+    """Home page: display 15 randomly selected well-rated films.
 
-    Picks 15 random years between 1940 and 2024, queries the local database for
-    one highly rated film per year (rating >= 5.0, votes >= 1000), then enriches
-    each result with poster, overview, and country of origin from TMDB.
-    Falls back to random well-rated films for any year that returns no results.
-    The final list is shuffled and sorted by rating descending before rendering.
+    Draws from a cached pool of ~70 movies spread across decades (1950s–2020s).
+    The pool is refreshed every hour via a single batch of TMDB requests; each
+    visit picks a fresh random 15 from the pool — no TMDB calls per request.
     """
-    years = random.sample(range(1940, 2025), 15)
-
-    # Single query for all years at once, pick one random film per year in Python
-    placeholders = ",".join("?" * len(years))
-    rows = db.execute(
-        f"""SELECT title, year, rating FROM movies
-            INNER JOIN ratings ON id = movie_id
-            WHERE year IN ({placeholders}) AND rating >= 5.0 AND votes >= 1000
-            ORDER BY RANDOM()""",
-        *years
-    )
-    seen_years, mov = set(), []
-    for row in rows:
-        if row["year"] not in seen_years:
-            seen_years.add(row["year"])
-            mov.append(row)
-            if len(mov) == 15:
-                break
-
-    if len(mov) < 15:
-        extras = db.execute(
-            """SELECT title, year, rating FROM movies
-               INNER JOIN ratings ON id = movie_id
-               WHERE rating >= 5.0 AND votes >= 1000
-               ORDER BY RANDOM()
-               LIMIT ?""",
-            15 - len(mov)
-        )
-        mov.extend(extras)
-
-    mov = sorted(mov[:15], key=lambda x: x["rating"], reverse=True)
-
-    # Fetch all 15 TMDB enrichments concurrently instead of sequentially
-    def enrich(film):
-        tmdb = tmdb_search_with_country(film["title"], year=film["year"])
-        return {
-            "title":    film["title"],
-            "year":     film["year"],
-            "rating":   film["rating"],
-            "poster":   tmdb["poster"]   if tmdb else None,
-            "overview": tmdb["overview"] if tmdb else "No description available.",
-            "country":  tmdb["country"]  if tmdb else None,
-            "tmdb_id":  tmdb["tmdb_id"]  if tmdb else None,
-        }
-
-    result = [None] * len(mov)
-    with ThreadPoolExecutor(max_workers=15) as ex:
-        futures = {ex.submit(enrich, film): idx for idx, film in enumerate(mov)}
-        for future in as_completed(futures):
-            result[futures[future]] = future.result()
-
-    return render_template("index.html", mov=result)
+    pool = get_homepage_pool()
+    mov  = random.sample(pool, min(15, len(pool))) if pool else []
+    return render_template("index.html", mov=mov)
 
 
 # ── NEWS ────────────────────────────────────────────────────────────────────

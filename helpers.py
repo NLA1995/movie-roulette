@@ -1,4 +1,5 @@
 import os
+import random
 import requests
 import xml.etree.ElementTree as ET
 import re
@@ -764,3 +765,67 @@ def get_roi_by_genre():
         return sorted(results, key=lambda x: x["roi"], reverse=True)
 
     return _get_cached("roi_by_genre", fetch)
+
+
+def get_homepage_pool():
+    """Return a cached pool of ~70 well-rated movies spanning multiple decades.
+
+    Fires one TMDB /discover/movie request per decade (7 decades, concurrent)
+    and picks up to 10 random films from each page. Results are cached for
+    1 hour; index() draws a random 15 from the pool on each request so visitors
+    still get variety without hitting TMDB on every page load.
+    """
+    def fetch():
+        decades = [
+            ("1950s-60s", "1950-01-01", "1969-12-31"),
+            ("1970s",     "1970-01-01", "1979-12-31"),
+            ("1980s",     "1980-01-01", "1989-12-31"),
+            ("1990s",     "1990-01-01", "1999-12-31"),
+            ("2000s",     "2000-01-01", "2009-12-31"),
+            ("2010s",     "2010-01-01", "2019-12-31"),
+            ("2020s",     "2020-01-01", "2024-12-31"),
+        ]
+
+        def fetch_decade(gte, lte):
+            try:
+                r = requests.get(
+                    f"{TMDB_BASE_URL}/discover/movie",
+                    params={
+                        "api_key":                      TMDB_API_KEY,
+                        "language":                     "en-US",
+                        "sort_by":                      "vote_count.desc",
+                        "vote_count.gte":               1000,
+                        "vote_average.gte":             5.0,
+                        "primary_release_date.gte":     gte,
+                        "primary_release_date.lte":     lte,
+                        "page":                         random.randint(1, 4),
+                    },
+                    timeout=6,
+                )
+                r.raise_for_status()
+                results = r.json().get("results", [])
+                random.shuffle(results)
+                return [
+                    {
+                        "title":    m.get("title"),
+                        "year":     m.get("release_date", "")[:4],
+                        "rating":   round(m.get("vote_average", 0), 1),
+                        "poster":   TMDB_IMG_BASE + m["poster_path"] if m.get("poster_path") else None,
+                        "overview": m.get("overview"),
+                        "tmdb_id":  m.get("id"),
+                        "country":  None,
+                    }
+                    for m in results[:10]
+                ]
+            except Exception:
+                return []
+
+        pool = []
+        with ThreadPoolExecutor(max_workers=len(decades)) as ex:
+            futures = [ex.submit(fetch_decade, gte, lte) for _, gte, lte in decades]
+            for fut in as_completed(futures):
+                pool.extend(fut.result())
+
+        return pool
+
+    return _get_cached("homepage_pool", fetch)
