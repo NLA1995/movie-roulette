@@ -173,7 +173,19 @@
         display: flex; gap: 16px; overflow-x: auto;
         padding-bottom: 12px; scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
+        /* Firefox */
+        scrollbar-width: thin;
+        scrollbar-color: rgba(245,197,24,0.35) transparent;
     }
+    /* Chrome, Edge, Safari */
+    .similar-row::-webkit-scrollbar { height: 6px; }
+    .similar-row::-webkit-scrollbar-track { background: transparent; }
+    .similar-row::-webkit-scrollbar-thumb {
+        background: rgba(245,197,24,0.35);
+        border-radius: 3px;
+    }
+    .similar-row::-webkit-scrollbar-thumb:hover { background: #f5c518; }
+    .similar-row::-webkit-scrollbar-button { display: none; }
     .similar-card {
         flex: 0 0 150px; scroll-snap-align: start;
         text-decoration: none; color: #ddd;
