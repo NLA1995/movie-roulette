@@ -55,8 +55,10 @@
 <div class="dash-card">
     <div class="dash-title">Genre Trends</div>
     <div class="dash-subtitle">
-        How many films per genre were released each decade,
-        based on titles with at least 50 votes on TMDB.
+        What share of each decade's films belongs to each genre, based on titles with
+        at least 50 votes on TMDB. Normalising by the decade total removes the fact that
+        every decade simply releases more films. A film can have several genres, so a
+        decade's shares add up to more than 100%. Use the buttons to switch to raw counts.
     </div>
     <div id="genres-chart">
         <div class="spinner-wrap">
@@ -79,8 +81,10 @@
         The Silver Screen by the Numbers: Decoding a Half-Century of Cinema Through a Heatmap
     </h2>
     <p style="color:#666; font-size:0.85rem; margin-bottom:2rem;">
-        Data source: Film genre counts aggregated by decade. Color scale ranges from near-zero (light yellow)
-        to 5,000+ films (deep crimson). Genre classifications based on primary genre tags in the underlying dataset.
+        Data source: TMDB /discover counts of films with 50+ votes, by genre and decade. The chart opens on
+        the <em>Share (%)</em> view (genre count ÷ all films in that decade); the analysis below was written
+        for the <em>Film count</em> view, where the color scale runs from near-zero (light yellow) to 5,000+
+        films (deep crimson). A film is counted in every genre it is tagged with.
     </p>
 
     <h4 style="color:#fff;">Introduction</h4>
@@ -243,7 +247,9 @@
     <div class="dash-title">Budget vs. Rating</div>
     <div class="dash-subtitle">
         Does spending more money make a better film? Each dot is a popular movie
-        with 1 000+ votes. Color shows how many people voted for it.
+        with 1,000+ votes. Budgets are adjusted for inflation (US CPI-U, 2025 dollars) and
+        shown on a log scale. Color shows how many people voted for it. The title reports
+        Spearman's rank correlation with a permutation-test p-value.
     </div>
     <div id="budget-chart">
         <div class="spinner-wrap">
@@ -266,8 +272,9 @@
         Does Money Buy Quality? Decoding the Budget vs. Rating Scatter Plot
     </h2>
     <p style="color:#666; font-size:0.85rem; margin-bottom:2rem;">
-        Data source: Popular films with 1,000+ TMDB votes. X-axis: production budget in millions USD.
-        Y-axis: TMDB audience rating. Dot color: total vote count (purple = ~5k, yellow = ~35k+).
+        Data source: Popular films with 1,000+ TMDB votes. X-axis: production budget in millions of
+        2025 USD (inflation-adjusted with US CPI-U), log scale. Y-axis: TMDB audience rating.
+        Dot color: total vote count (purple = ~5k, yellow = ~35k+).
     </p>
 
     <h4 style="color:#fff;">Introduction</h4>
@@ -317,9 +324,15 @@
 
     <h4 style="color:#fff;">What the Trend Line and R² Tell Us</h4>
     <p>The dashed yellow line running across the chart is a <strong style="color:#f5c518;">linear regression</strong>
-    — the best-fit straight line through all the data points. It shows the average direction of the
-    relationship between budget and rating. The fact that it is nearly flat is already telling, but the
-    number that makes it precise is <strong style="color:#f5c518;">R²</strong>.</p>
+    of rating on the <em>logarithm</em> of budget — the best-fit line through the data points. Budgets are
+    heavily right-skewed (a few $300M films, many under $50M), so a log scale stops the biggest productions
+    from dominating the fit. The line shows the average direction of the relationship; how flat it is,
+    and how much it explains, is summarised by <strong style="color:#f5c518;">R²</strong>.</p>
+    <p>The chart title also reports <strong style="color:#f5c518;">Spearman's ρ</strong>, a rank
+    correlation: it asks whether more expensive films tend to rank higher in rating, without assuming a
+    straight-line relationship and without being dragged around by outliers. Its p-value comes from a
+    <strong style="color:#f5c518;">permutation test</strong> — shuffling the ratings 2,000 times and
+    checking how often a correlation at least this strong appears by chance.</p>
     <p>R² (pronounced "R-squared") is the <em>coefficient of determination</em>. It measures what percentage
     of the variation in ratings can be explained by budget alone. It ranges from 0 to 1:</p>
     <ul>
@@ -401,8 +414,10 @@
         <li><strong style="color:#f5c518;">Time bias:</strong> Older films accumulate ratings from
         self-selecting cinephiles who sought them out; newer films get rated by mass audiences
         immediately after release. This creates a systematic upward bias for older films.</li>
-        <li><strong style="color:#f5c518;">Inflation:</strong> A $30M budget in 1995 is not the same
-        as $30M in 2020. Without inflation adjustment, budget comparisons across decades are imprecise.</li>
+        <li><strong style="color:#f5c518;">Inflation (adjusted, with limits):</strong> budgets are
+        converted to 2025 dollars with the US consumer price index (CPI-U). CPI tracks general consumer
+        prices, not film-production costs (star salaries and VFX have grown faster), so older budgets
+        are still somewhat understated in real terms.</li>
         <li><strong style="color:#f5c518;">Survivorship bias:</strong> This dataset only includes films
         with 1,000+ votes — which already filters out the lowest-quality, lowest-visibility productions.
         The true bottom of the quality distribution is invisible.</li>
@@ -427,8 +442,10 @@
 <div class="dash-card">
     <div class="dash-title">ROI by Genre</div>
     <div class="dash-subtitle">
-        Which genres actually make money? Median return on investment per genre,
-        based on films with a reported budget over $5M and box office revenue over $1M.
+        Which genres actually make money? Median return on investment per genre for its
+        20 most-voted films, keeping those with a reported budget over $5M and box office
+        revenue over $1M. Whiskers are 95% bootstrap confidence intervals for the median:
+        when two genres' intervals overlap, the data can't reliably tell them apart.
     </div>
     <div id="roi-chart">
         <div class="spinner-wrap">
@@ -450,9 +467,10 @@
         What Genre Makes the Most Money? Decoding ROI Across Hollywood's Major Categories
     </h2>
     <p style="color:#666; font-size:0.85rem; margin-bottom:2rem;">
-        Data source: Top voted films per genre via TMDB. Only films with reported budget &gt; $5M
+        Data source: the 20 most-voted films per genre via TMDB. Only films with reported budget &gt; $5M
         and box office revenue &gt; $1M are included. ROI = (revenue − budget) / budget × 100.
-        Metric used: median ROI per genre (more robust than mean against outlier blockbusters).
+        Metric used: median ROI per genre (more robust than mean against outlier blockbusters), with a
+        95% percentile-bootstrap confidence interval (2,000 resamples).
     </p>
 
     <h4 style="color:#fff;">What Is ROI and Why Does It Matter in Cinema?</h4>
@@ -472,7 +490,9 @@
     films in that category barely broke even.</p>
     <ul>
         <li><strong style="color:#f5c518;">Yellow bars</strong> — genres with positive median ROI (profitable)</li>
-        <li><strong>n=</strong> above each bar shows the sample size — treat small samples with caution</li>
+        <li><strong>n=</strong> under each genre name shows the sample size — treat small samples with caution</li>
+        <li><strong style="color:#f5c518;">Whiskers</strong> — 95% bootstrap confidence interval for the
+        median. Wide whiskers mean the median would move a lot with a different set of films.</li>
     </ul>
 
     <h4 style="color:#fff;">The Efficiency Champions</h4>
@@ -509,9 +529,9 @@
     <h4 style="color:#fff;">Important Limitations</h4>
     <ul>
         <li><strong style="color:#f5c518;">Small sample size.</strong> Each genre is based on
-        only the top 10 most-voted films. With n=10, the median can shift noticeably between
-        data refreshes depending on which films TMDB returns. Treat rankings as directional,
-        not definitive.</li>
+        at most its 20 most-voted films (fewer after removing missing budgets or revenues). The
+        confidence intervals make this visible: where they overlap, the ranking between those
+        genres is not statistically reliable.</li>
         <li><strong style="color:#f5c518;">Marketing costs are excluded.</strong> Production budget
         and marketing budget are separate. Major studio releases typically spend 50–100% of the
         production budget again on marketing. True profitability requires accounting for both.</li>
@@ -522,8 +542,11 @@
         directly to Netflix or Amazon have no public box office figure. Their ROI is entirely
         absent from this chart.</li>
         <li><strong style="color:#f5c518;">Genre overlap.</strong> A film tagged as both Horror
-        and Thriller is counted in whichever genre TMDB lists first. Multi-genre films dilute
-        each category's signal.</li>
+        and Thriller is counted in both genres if it ranks among each one's most-voted films,
+        so the genre samples are not independent of each other.</li>
+        <li><strong style="color:#f5c518;">Selection bias.</strong> Most-voted films are, almost by
+        definition, the ones that found an audience. Flops are under-represented, so every genre's
+        ROI here is higher than a typical film in that genre would earn.</li>
     </ul>
 
     <h4 style="color:#fff;">Conclusion</h4>
@@ -563,6 +586,7 @@
                 return r.json();
             })
             .then(fig => {
+                if (!fig.data) throw new Error("No data");
                 document.getElementById(elementId).innerHTML = '';
                 Plotly.newPlot(elementId, fig.data, mobileLayout(fig.layout), plotConfig);
             })

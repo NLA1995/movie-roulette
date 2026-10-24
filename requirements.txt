@@ -5,6 +5,9 @@ Flask-Session
 requests
 Werkzeug
 plotly
+scikit-learn
 gunicorn
 # Only needed to refresh movies.db from IMDb dumps (update_movies_db.py)
 pandas
+# Tests
+pytest

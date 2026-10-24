@@ -168,6 +168,27 @@
     }
     .genre-tag:hover { border-color: #f5c518; color: #f5c518; background: rgba(245,197,24,0.05); }
 
+    /* More like this */
+    .similar-row {
+        display: flex; gap: 16px; overflow-x: auto;
+        padding-bottom: 12px; scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+    }
+    .similar-card {
+        flex: 0 0 150px; scroll-snap-align: start;
+        text-decoration: none; color: #ddd;
+    }
+    .similar-card img, .similar-card .no-poster {
+        width: 150px; height: 225px; object-fit: cover;
+        border-radius: 8px; display: block; background: #1c1c1c;
+        transition: transform 0.2s;
+    }
+    .similar-card:hover img { transform: scale(1.03); }
+    .similar-title { font-size: 13px; font-weight: 600; margin-top: 8px; line-height: 1.3; }
+    .similar-meta  { font-size: 11px; color: #888; margin-top: 2px; }
+    .similar-why   { font-size: 11px; color: #f5c518; margin-top: 4px; line-height: 1.4; }
+    .similar-note  { color: #555; font-size: 13px; }
+
     /* Cast */
     .cast-list { display: flex; flex-wrap: wrap; gap: 10px; }
     .cast-pill {
@@ -369,6 +390,41 @@
     </div>
     {% endif %}
 
+    <!-- More like this (content-based recommender, loaded async) -->
+    <div class="section" id="similar-section">
+        <div class="section-label">More Like This</div>
+        <div id="similar-row" class="similar-row">
+            <p class="similar-note">Finding similar films…</p>
+        </div>
+    </div>
+
 </div>
+
+<script>
+(function () {
+    const row = document.getElementById("similar-row");
+    const esc = s => String(s ?? "").replace(/[&<>"']/g,
+        c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+
+    fetch("/movie/{{ tmdb_id }}/similar")
+        .then(r => r.ok ? r.json() : [])
+        .then(items => {
+            if (!items.length) {
+                document.getElementById("similar-section").style.display = "none";
+                return;
+            }
+            row.innerHTML = items.map(m => `
+                <a class="similar-card" href="/movie/${m.tmdb_id}"
+                   title="Similarity score: ${m.score}">
+                    ${m.poster ? `<img src="${esc(m.poster)}" alt="${esc(m.title)}" loading="lazy">`
+                               : `<div class="no-poster"></div>`}
+                    <div class="similar-title">${esc(m.title)}</div>
+                    <div class="similar-meta">${esc(m.year)} · ⭐ ${esc(m.rating)}</div>
+                    ${m.why.length ? `<div class="similar-why">${m.why.map(esc).join(" · ")}</div>` : ""}
+                </a>`).join("");
+        })
+        .catch(() => { document.getElementById("similar-section").style.display = "none"; });
+})();
+</script>
 
 {% endblock %}

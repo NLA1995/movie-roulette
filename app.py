@@ -1,3 +1,4 @@
+import math
 import os
 from dotenv import load_dotenv
 load_dotenv()
@@ -15,9 +16,14 @@ from helpers import (
     tmdb_search, tmdb_search_popular, tmdb_search_tv,
     tmdb_search_with_country, tmdb_by_genre, tmdb_detail,
     tmdb_now_playing, tmdb_upcoming,
-    tmdb_tv_by_genre, tmdb_tv_detail, get_news_articles,
-    TMDB_GENRES, TMDB_TV_GENRES, usd,
-    get_genres_by_decade, get_budget_vs_rating, get_roi_by_genre,
+    tmdb_tv_by_genre, tmdb_tv_detail, tmdb_rec_features, get_news_articles,
+    TMDB_IMG_BASE,
+    get_genres_by_decade, get_budget_vs_rating, get_roi_by_genre, DECADES,
+)
+from recommender import get_recommender
+from analytics import (
+    CPI_BASE_YEAR, bootstrap_ci, linear_regression, median,
+    permutation_pvalue, share_by_column, spearman,
 )
 
 app = Flask(__name__)
@@ -204,7 +210,38 @@ def movie_detail(tmdb_id):
     movie = tmdb_detail(tmdb_id)
     if not movie:
         return apology("Movie not found", 404)
-    return render_template("movie_detail.html", movie=movie)
+    return render_template("movie_detail.html", movie=movie, tmdb_id=tmdb_id)
+
+
+@app.route("/movie/<int:tmdb_id>/similar")
+def movie_similar(tmdb_id):
+    """Return up to 10 content-based recommendations for a movie as JSON.
+
+    Films in the precomputed corpus use their stored vector; any other film is
+    vectorised on the fly from its TMDB metadata (cold start). Returns [] when
+    the corpus has not been built yet.
+    """
+    model = get_recommender()
+    if model is None:
+        return jsonify([])
+
+    source = model.films[model.index[tmdb_id]] if tmdb_id in model.index else tmdb_rec_features(tmdb_id)
+    if not source:
+        return jsonify([])
+
+    results = []
+    for j, score in model.recommend(tmdb_id, k=10, film=source):
+        f = model.films[j]
+        results.append({
+            "tmdb_id": f["id"],
+            "title":   f["title"],
+            "year":    f["year"],
+            "rating":  round(f["rating"], 1),
+            "poster":  TMDB_IMG_BASE + f["poster_path"] if f.get("poster_path") else None,
+            "score":   round(score, 3),
+            "why":     model.explain(source, f),
+        })
+    return jsonify(results)
 
 
 # ── DASHBOARD ────────────────────────────────────────────────────────────────
@@ -214,59 +251,103 @@ def dashboard():
     return render_template("dashboard.html")
 
 
-@app.route("/dashboard/genres-data")
-def dashboard_genres_data():
-    """Return a Plotly heatmap figure (JSON) of film counts per genre per decade.
+def _empty_chart():
+    """JSON response the dashboard JS treats as 'no data' (renders an error note)."""
+    return app.response_class(json.dumps({}), mimetype="application/json")
 
-    Data is cached for 12 hours. The color scale runs from light yellow (low)
-    to dark red (high) using the YlOrRd palette.
-    """
-    data    = get_genres_by_decade()
-    decades = ["1970s", "1980s", "1990s", "2000s", "2010s", "2020s"]
-    genres  = list(data.keys())
-    z       = [[data[g][d] for d in decades] for g in genres]
 
-    fig = go.Figure(data=go.Heatmap(
-        z=z, x=decades, y=genres,
-        colorscale="YlOrRd",
-        hovertemplate="<b>%{y}</b><br>%{x}: %{z:,} films<extra></extra>",
-    ))
-    fig.update_layout(
-        paper_bgcolor="#141414", plot_bgcolor="#141414",
-        font=dict(color="white", family="Inter"),
-        title=dict(text="Films per Genre by Decade", font=dict(size=18)),
-        margin=dict(l=110, r=20, t=60, b=40),
-        xaxis=dict(side="bottom"),
-    )
+def _figure_response(fig):
     return app.response_class(
         json.dumps(fig, cls=PlotlyJSONEncoder),
         mimetype="application/json"
     )
 
 
+@app.route("/dashboard/genres-data")
+def dashboard_genres_data():
+    """Return a Plotly heatmap (JSON) of genres per decade.
+
+    Default view is each genre's share of the decade's films (normalised by
+    the decade total), so the chart shows which genres grew rather than the fact
+    that more films are made every decade. A button toggles back to raw counts.
+    """
+    data = get_genres_by_decade()
+    if not data:
+        return _empty_chart()
+
+    decades = list(DECADES)
+    counts  = data["counts"]
+    totals  = data["totals"]
+    shares  = share_by_column(counts, totals)
+    # Sort genres by their latest share so the heatmap reads top-to-bottom
+    genres  = sorted(counts, key=lambda g: shares[g][decades[-1]])
+
+    z_share = [[round(shares[g][d], 1) for d in decades] for g in genres]
+    z_count = [[counts[g].get(d, 0) for d in decades] for g in genres]
+    x_labels = [f"{d}<br><sub>n={totals.get(d, 0):,}</sub>" for d in decades]
+
+    share_hover = "<b>%{y}</b><br>%{x}: %{z:.1f}% of the decade's films<extra></extra>"
+    count_hover = "<b>%{y}</b><br>%{x}: %{z:,} films<extra></extra>"
+
+    fig = go.Figure(data=go.Heatmap(
+        z=z_share, x=decades, y=genres,
+        colorscale="YlOrRd",
+        colorbar=dict(title=dict(text="% of decade"), ticksuffix="%"),
+        hovertemplate=share_hover,
+    ))
+    fig.update_layout(
+        paper_bgcolor="#141414", plot_bgcolor="#141414",
+        font=dict(color="white", family="Inter"),
+        title=dict(text="Genre share by decade (% of films with 50+ votes)",
+                   font=dict(size=18)),
+        margin=dict(l=110, r=20, t=100, b=40),
+        xaxis=dict(side="bottom", tickmode="array", tickvals=decades, ticktext=x_labels),
+        updatemenus=[dict(
+            type="buttons", direction="right",
+            x=1, xanchor="right", y=1.18, yanchor="top",
+            bgcolor="#bdbdbd", bordercolor="#555", font=dict(color="#141414"),
+            showactive=True, active=0,
+            buttons=[
+                dict(label="Share (%)", method="update", args=[
+                    {"z": [z_share], "hovertemplate": [share_hover],
+                     "colorbar.title.text": ["% of decade"], "colorbar.ticksuffix": ["%"]},
+                    {"title.text": "Genre share by decade (% of films with 50+ votes)"},
+                ]),
+                dict(label="Film count", method="update", args=[
+                    {"z": [z_count], "hovertemplate": [count_hover],
+                     "colorbar.title.text": ["Films"], "colorbar.ticksuffix": [""]},
+                    {"title.text": "Films per genre by decade (raw count)"},
+                ]),
+            ],
+        )],
+    )
+    return _figure_response(fig)
+
+
 @app.route("/dashboard/budget-data")
 def dashboard_budget_data():
-    """Return a Plotly scatter + regression line figure of budget vs. TMDB rating."""
+    """Return a Plotly scatter of inflation-adjusted budget vs. TMDB rating.
+
+    Budgets are converted to CPI_BASE_YEAR dollars and plotted on a log axis
+    (budgets span two orders of magnitude and are right-skewed). The trend line
+    is OLS of rating on log10(budget). The title reports Spearman's ρ with a
+    permutation p-value, which is robust to the skew and to outliers, plus the
+    R² of the log-linear fit.
+    """
     data = get_budget_vs_rating()
+    if not data or len(data) < 3:
+        return _empty_chart()
 
-    x = [m["budget_m"] for m in data]
-    y = [m["rating"]   for m in data]
+    x     = [m["budget_real_m"] for m in data]
+    y     = [m["rating"]        for m in data]
+    log_x = [math.log10(v) for v in x]
 
-    # Linear regression (pure Python — no numpy needed)
-    n      = len(x)
-    x_mean = sum(x) / n
-    y_mean = sum(y) / n
-    num    = sum((xi - x_mean) * (yi - y_mean) for xi, yi in zip(x, y))
-    den    = sum((xi - x_mean) ** 2 for xi in x)
-    slope     = num / den if den else 0
-    intercept = y_mean - slope * x_mean
-    y_pred    = [slope * xi + intercept for xi in x]
-    ss_res    = sum((yi - yp) ** 2 for yi, yp in zip(y, y_pred))
-    ss_tot    = sum((yi - y_mean) ** 2 for yi in y)
-    r2        = round(1 - ss_res / ss_tot, 3) if ss_tot else 0
+    rho   = spearman(x, y)
+    p_val = permutation_pvalue(x, y, stat=spearman)
+    slope, intercept, r2 = linear_regression(log_x, y)
 
     x_line = [min(x), max(x)]
-    y_line = [slope * xi + intercept for xi in x_line]
+    y_line = [intercept + slope * math.log10(v) for v in x_line]
 
     scatter = go.Scatter(
         x=x, y=y,
@@ -286,7 +367,7 @@ def dashboard_budget_data():
         text=[
             f"<b>{m['title']}</b> ({m['year']})<br>"
             f"{m['genres']}<br>"
-            f"Budget: ${m['budget_m']}M<br>"
+            f"Budget: ${m['budget_m']}M nominal · ${m['budget_real_m']}M in {CPI_BASE_YEAR} USD<br>"
             f"Rating: {m['rating']} ⭐"
             for m in data
         ],
@@ -296,76 +377,88 @@ def dashboard_budget_data():
     reg_line = go.Scatter(
         x=x_line, y=y_line,
         mode="lines",
-        name="Trend line",
+        name=f"OLS on log budget (R² = {r2:.3f})",
         line=dict(color="#f5c518", width=2, dash="dash"),
         hoverinfo="skip",
     )
 
+    p_txt = "p < 0.001" if p_val < 0.001 else f"p = {p_val:.3f}"
     fig = go.Figure(data=[scatter, reg_line])
     fig.update_layout(
         paper_bgcolor="#141414", plot_bgcolor="#1e1e1e",
         font=dict(color="white", family="Inter"),
         title=dict(
-            text=f"Budget vs. Rating — popular films with 1 000+ votes  |  R² = {r2}",
+            text=(f"Budget vs. Rating — n = {len(data)}  |  "
+                  f"Spearman ρ = {rho:+.2f} ({p_txt})"),
             font=dict(size=18),
         ),
-        xaxis=dict(title="Budget (millions USD)", gridcolor="#333", zeroline=False),
+        xaxis=dict(title=f"Budget (millions of {CPI_BASE_YEAR} USD, log scale)",
+                   type="log", gridcolor="#333", zeroline=False),
         yaxis=dict(title="TMDB Rating", gridcolor="#333", zeroline=False),
         legend=dict(
             font=dict(color="white"),
             orientation="h",
-            x=0, y=-0.15,
+            x=0, y=-0.2,
         ),
-        margin=dict(l=60, r=20, t=60, b=60),
+        margin=dict(l=60, r=20, t=60, b=80),
     )
-    return app.response_class(
-        json.dumps(fig, cls=PlotlyJSONEncoder),
-        mimetype="application/json"
-    )
+    return _figure_response(fig)
 
 
 @app.route("/dashboard/roi-data")
 def dashboard_roi_data():
-    """Return a Plotly bar chart of median ROI by genre."""
-    data = get_roi_by_genre()
+    """Return a Plotly bar chart of median ROI by genre with 95% bootstrap CIs.
 
-    if not data:
-        return app.response_class(
-            json.dumps({}), mimetype="application/json"
-        )
+    The error bars are percentile-bootstrap intervals for the median (2,000
+    resamples, fixed seed). With n ≤ 20 per genre the intervals are wide and
+    often overlap — that overlap is the honest answer to "which genre is best".
+    """
+    rois_by_genre = get_roi_by_genre()
+    if not rois_by_genre:
+        return _empty_chart()
+
+    data = []
+    for genre, rois in rois_by_genre.items():
+        lo, hi = bootstrap_ci(rois, stat=median)
+        data.append({"genre": genre, "roi": median(rois),
+                     "lo": lo, "hi": hi, "n": len(rois)})
+    data.sort(key=lambda d: d["roi"], reverse=True)
 
     colors = ["#f5c518" if d["roi"] >= 0 else "#e05c5c" for d in data]
-
-    all_rois = [d["roi"] for d in data]
-    y_min = min(min(all_rois) * 1.25, 0)
-    y_max = max(max(all_rois) * 1.25, 0)
+    y_min  = min(min(d["lo"] for d in data) * 1.1, 0)
+    y_max  = max(max(d["hi"] for d in data) * 1.1, 0)
 
     fig = go.Figure(data=go.Bar(
         x=[d["genre"] for d in data],
-        y=[d["roi"]   for d in data],
+        y=[d["roi"] for d in data],
         marker_color=colors,
-        text=[f"{d['roi']:+.0f}%  (n={d['sample_size']})" for d in data],
-        textposition="outside",
+        error_y=dict(
+            type="data", symmetric=False,
+            array=[d["hi"] - d["roi"] for d in data],
+            arrayminus=[d["roi"] - d["lo"] for d in data],
+            color="#bbbbbb", thickness=1.5, width=6,
+        ),
+        customdata=[[d["lo"], d["hi"], d["n"]] for d in data],
         hovertemplate=(
             "<b>%{x}</b><br>"
-            "Median ROI: %{y:.1f}%<br>"
+            "Median ROI: %{y:,.0f}%<br>"
+            "95% CI: %{customdata[0]:,.0f}% to %{customdata[1]:,.0f}%<br>"
+            "Films: %{customdata[2]}"
             "<extra></extra>"
         ),
     ))
     fig.update_layout(
         paper_bgcolor="#141414", plot_bgcolor="#1e1e1e",
         font=dict(color="white", family="Inter"),
-        title=dict(text="Median ROI by Genre — does your genre make money?",
+        title=dict(text="Median ROI by Genre with 95% bootstrap CI",
                    font=dict(size=18)),
-        xaxis=dict(title="Genre", gridcolor="#333", zeroline=False),
+        xaxis=dict(title="Genre", gridcolor="#333", zeroline=False, tickmode="array",
+                   tickvals=[d["genre"] for d in data],
+                   ticktext=[f"{d['genre']}<br><sub>n={d['n']}</sub>" for d in data]),
         yaxis=dict(title="Median ROI (%)", gridcolor="#333", zeroline=True,
                    zerolinecolor="#555", zerolinewidth=1,
                    range=[y_min, y_max]),
         margin=dict(l=60, r=20, t=80, b=80),
         showlegend=False,
     )
-    return app.response_class(
-        json.dumps(fig, cls=PlotlyJSONEncoder),
-        mimetype="application/json"
-    )
-
+    return _figure_response(fig)

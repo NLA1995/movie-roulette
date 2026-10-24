@@ -402,6 +402,31 @@ def tmdb_detail(tmdb_id):
         return None
 
 
+def tmdb_rec_features(tmdb_id):
+    """Fetch the recommender features (overview, genres, keywords, director, cast)
+    for a film that is not in the precomputed corpus. Returns None on failure."""
+    try:
+        r = requests.get(
+            f"{TMDB_BASE_URL}/movie/{tmdb_id}",
+            params={"api_key": TMDB_API_KEY, "language": "en-US",
+                    "append_to_response": "keywords,credits"},
+            timeout=5,
+        )
+        r.raise_for_status()
+        d = r.json()
+    except requests.RequestException:
+        return None
+    credits = d.get("credits", {})
+    return {
+        "id":       d.get("id"),
+        "overview": d.get("overview") or "",
+        "genres":   [g["name"] for g in d.get("genres", [])],
+        "keywords": [k["name"] for k in d.get("keywords", {}).get("keywords", [])],
+        "director": [c["name"] for c in credits.get("crew", []) if c.get("job") == "Director"],
+        "cast":     [c["name"] for c in credits.get("cast", [])[:5]],
+    }
+
+
 # ── TMDB: full TV show detail ─────────────────────────────────────────────
 def tmdb_tv_detail(tmdb_id):
     """Fetch complete detail for a single TV show including cast and streaming providers."""
@@ -549,14 +574,26 @@ def usd(value):
 # ── Dashboard data helpers ─────────────────────────────────────────────────
 import time
 
+from analytics import to_real_dollars
+
 _dash_cache = {}
 _CACHE_TTL  = 43200  # 12 hours
+
+DECADES = {
+    "1970s": ("1970-01-01", "1979-12-31"),
+    "1980s": ("1980-01-01", "1989-12-31"),
+    "1990s": ("1990-01-01", "1999-12-31"),
+    "2000s": ("2000-01-01", "2009-12-31"),
+    "2010s": ("2010-01-01", "2019-12-31"),
+    "2020s": ("2020-01-01", "2029-12-31"),
+}
 
 
 def _get_cached(key, fn):
     """Return cached data for `key` if fresh, otherwise call fn() to refresh.
 
     Cache entries expire after _CACHE_TTL seconds (default 12 hours).
+    Empty results are not cached so a transient TMDB failure is retried.
     """
     now = time.time()
     if key in _dash_cache and now - _dash_cache[key]["ts"] < _CACHE_TTL:
@@ -567,64 +604,65 @@ def _get_cached(key, fn):
     return data
 
 
-def get_genres_by_decade():
-    """Return {genre: {decade: total_results}} by querying TMDB /discover/movie.
+def _discover_total(gte, lte, genre_id=None):
+    """Return TMDB's total_results for /discover/movie in a date range (0 on error)."""
+    params = {
+        "api_key": TMDB_API_KEY,
+        "primary_release_date.gte": gte,
+        "primary_release_date.lte": lte,
+        "vote_count.gte": 50,
+        "page": 1,
+    }
+    if genre_id is not None:
+        params["with_genres"] = genre_id
+    try:
+        r = requests.get(f"{TMDB_BASE_URL}/discover/movie", params=params, timeout=6)
+        r.raise_for_status()
+        return r.json().get("total_results", 0)
+    except Exception:
+        return 0
 
-    Counts films with at least 50 votes for each combination of genre and decade
-    from the 1970s through the 2020s. All 60 genre×decade requests are fired
-    concurrently. Results are cached for 12 hours.
+
+def get_genres_by_decade():
+    """Return {"counts": {genre: {decade: n}}, "totals": {decade: n}}.
+
+    `counts` is the number of films tagged with each genre per decade and
+    `totals` is the number of films in that decade regardless of genre (both
+    restricted to titles with 50+ votes). The totals are the denominator used to
+    normalise the heatmap: raw counts mostly reflect that every decade releases
+    more films than the last, while genre share shows which genres actually grew.
+
+    A film can carry several genres, so shares within a decade add up to more
+    than 100%. All 66 requests (60 genre×decade + 6 totals) run concurrently.
+    Results are cached for 12 hours.
     """
     def fetch():
-        decades = {
-            "1970s": ("1970-01-01", "1979-12-31"),
-            "1980s": ("1980-01-01", "1989-12-31"),
-            "1990s": ("1990-01-01", "1999-12-31"),
-            "2000s": ("2000-01-01", "2009-12-31"),
-            "2010s": ("2010-01-01", "2019-12-31"),
-            "2020s": ("2020-01-01", "2029-12-31"),
-        }
+        jobs = [(g, gid, d) for g, gid in TMDB_GENRES.items() for d in DECADES]
+        jobs += [(None, None, d) for d in DECADES]
 
-        # Build every (genre, decade) combination up front
-        combos = [
-            (genre_name, genre_id, decade, gte, lte)
-            for genre_name, genre_id in TMDB_GENRES.items()
-            for decade, (gte, lte) in decades.items()
-        ]
-
-        def _fetch_one(genre_name, genre_id, decade, gte, lte):
-            try:
-                r = requests.get(
-                    f"{TMDB_BASE_URL}/discover/movie",
-                    params={
-                        "api_key": TMDB_API_KEY,
-                        "with_genres": genre_id,
-                        "primary_release_date.gte": gte,
-                        "primary_release_date.lte": lte,
-                        "vote_count.gte": 50,
-                        "page": 1,
-                    },
-                    timeout=6,
-                )
-                r.raise_for_status()
-                return (genre_name, decade, r.json().get("total_results", 0))
-            except Exception:
-                return (genre_name, decade, 0)
-
-        result = {g: {} for g in TMDB_GENRES}
+        counts = {g: {} for g in TMDB_GENRES}
+        totals = {}
         with ThreadPoolExecutor(max_workers=20) as ex:
-            futures = [ex.submit(_fetch_one, *combo) for combo in combos]
+            futures = {ex.submit(_discover_total, *DECADES[d], gid): (g, d)
+                       for g, gid, d in jobs}
             for future in as_completed(futures):
-                genre_name, decade, total = future.result()
-                result[genre_name][decade] = total
+                genre_name, decade = futures[future]
+                n = future.result()
+                if genre_name is None:
+                    totals[decade] = n
+                else:
+                    counts[genre_name][decade] = n
 
-        return result
-    return _get_cached("genres_by_decade", fetch)
+        if not any(totals.values()):
+            return None
+        return {"counts": counts, "totals": totals}
+    return _get_cached("genres_by_decade_v2", fetch)
 
 
 def _fetch_detail_for_dash(tmdb_id):
     """Fetch raw TMDB movie detail JSON for a single tmdb_id.
 
-    Used concurrently by get_budget_vs_rating. Returns the parsed JSON dict
+    Used concurrently by the dashboard helpers. Returns the parsed JSON dict
     or None on any request error.
     """
     try:
@@ -640,12 +678,16 @@ def _fetch_detail_for_dash(tmdb_id):
 
 
 def get_budget_vs_rating():
-    """Return a list of {title, budget_m, rating, votes, genres, year} for the scatter plot.
+    """Return a list of film dicts for the budget-vs-rating scatter plot.
+
+    Each dict has title, year, genres, rating, votes, budget_m (nominal
+    millions USD) and budget_real_m (millions of CPI_BASE_YEAR USD, adjusted
+    with US CPI-U so a 1977 budget is comparable to a 2019 one).
 
     Fetches the 80 most popular films with 1,000+ votes, then resolves each
     movie's full detail concurrently (10 workers) to obtain budget information.
-    Only films with a known budget > $1M and a rating > 0 are included.
-    Results are sorted by budget ascending and cached for 12 hours.
+    Only films with a known budget > $1M, a rating > 0, 500+ votes and a release
+    year are included. Results are sorted by real budget and cached for 12 hours.
     """
     def fetch():
         ids = []
@@ -674,38 +716,40 @@ def get_budget_vs_rating():
                 d = future.result()
                 if not d:
                     continue
-                budget = d.get("budget", 0)
-                rating = d.get("vote_average", 0)
-                votes  = d.get("vote_count", 0)
-                if budget > 1_000_000 and rating > 0 and votes >= 500:
+                budget = d.get("budget") or 0
+                rating = d.get("vote_average") or 0
+                votes  = d.get("vote_count") or 0
+                year   = (d.get("release_date") or "")[:4]
+                real   = to_real_dollars(budget, year)
+                if budget > 1_000_000 and rating > 0 and votes >= 500 and real:
                     genres = [g["name"] for g in d.get("genres", [])[:2]]
                     results.append({
-                        "title":    d.get("title", ""),
-                        "budget_m": round(budget / 1_000_000, 1),
-                        "rating":   round(rating, 1),
-                        "votes":    votes,
-                        "genres":   ", ".join(genres),
-                        "year":     d.get("release_date", "")[:4],
+                        "title":         d.get("title", ""),
+                        "budget_m":      round(budget / 1_000_000, 1),
+                        "budget_real_m": round(real / 1_000_000, 1),
+                        "rating":        round(rating, 1),
+                        "votes":         votes,
+                        "genres":        ", ".join(genres),
+                        "year":          year,
                     })
-        return sorted(results, key=lambda x: x["budget_m"])
-    return _get_cached("budget_vs_rating", fetch)
+        return sorted(results, key=lambda x: x["budget_real_m"])
+    return _get_cached("budget_vs_rating_v2", fetch)
 
 
 def get_roi_by_genre():
-    """Return a list of {genre, roi, sample_size} sorted by median ROI descending.
+    """Return {genre: [roi, ...]} — the individual film ROIs (%) per genre.
 
-    For each genre in TMDB_GENRES, fetches the top 20 most-voted films via
-    /discover/movie, then resolves each film's budget and revenue concurrently.
-    Only films with budget > $5M and revenue > $1M are included to avoid
-    unreported or placeholder values. ROI is computed as
-    (revenue - budget) / budget * 100. Results are cached for 12 hours.
+    For each genre in TMDB_GENRES, fetches the 20 most-voted films (one TMDB
+    page) via /discover/movie, then resolves each film's budget and revenue
+    concurrently. Only films with budget > $5M and revenue > $1M are kept to
+    drop unreported or placeholder values. ROI = (revenue - budget) / budget × 100.
+
+    A film tagged with several genres can appear in several genre lists — it is
+    counted in every genre whose top-20 it lands in. Budget and revenue are both
+    nominal dollars of the same release, so the ratio needs no inflation
+    adjustment. Aggregation (median + bootstrap CI) happens in the route so the
+    raw distribution stays available. Results are cached for 12 hours.
     """
-    def _median(values):
-        s = sorted(values)
-        n = len(s)
-        mid = n // 2
-        return (s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2)
-
     def _fetch_genre_ids(genre_name, genre_id):
         try:
             r = requests.get(
@@ -719,7 +763,7 @@ def get_roi_by_genre():
                 timeout=6,
             )
             r.raise_for_status()
-            return (genre_name, [m["id"] for m in r.json().get("results", [])[:10]])
+            return (genre_name, [m["id"] for m in r.json().get("results", [])[:20]])
         except Exception:
             return (genre_name, [])
 
@@ -727,43 +771,37 @@ def get_roi_by_genre():
         # Step 1: fetch all genre ID lists concurrently
         genre_ids = {}
         with ThreadPoolExecutor(max_workers=len(TMDB_GENRES)) as ex:
-            futs = {ex.submit(_fetch_genre_ids, name, gid): name
-                    for name, gid in TMDB_GENRES.items()}
+            futs = [ex.submit(_fetch_genre_ids, name, gid)
+                    for name, gid in TMDB_GENRES.items()]
             for fut in as_completed(futs):
                 genre_name, ids = fut.result()
                 if ids:
                     genre_ids[genre_name] = ids
 
-        # Step 2: fetch all movie details in a single flat pool
-        all_ids = [(genre, tid) for genre, ids in genre_ids.items() for tid in ids]
+        # Step 2: fetch each distinct movie once (films repeat across genres)
+        unique_ids = {tid for ids in genre_ids.values() for tid in ids}
         detail_map = {}
         with ThreadPoolExecutor(max_workers=20) as ex:
-            futs = {ex.submit(_fetch_detail_for_dash, tid): (genre, tid)
-                    for genre, tid in all_ids}
+            futs = {ex.submit(_fetch_detail_for_dash, tid): tid for tid in unique_ids}
             for fut in as_completed(futs):
-                genre, tid = futs[fut]
                 d = fut.result()
                 if d:
-                    detail_map[(genre, tid)] = d
+                    detail_map[futs[fut]] = d
 
-        # Step 3: compute ROI per genre
-        genre_rois = {name: [] for name in genre_ids}
-        for (genre, tid), d in detail_map.items():
-            budget  = d.get("budget", 0)
-            revenue = d.get("revenue", 0)
-            if budget > 5_000_000 and revenue > 1_000_000:
-                genre_rois[genre].append((revenue - budget) / budget * 100)
-
-        results = []
-        for genre, rois in genre_rois.items():
+        # Step 3: individual ROIs per genre
+        genre_rois = {}
+        for genre, ids in genre_ids.items():
+            rois = []
+            for tid in ids:
+                d = detail_map.get(tid)
+                if not d:
+                    continue
+                budget  = d.get("budget") or 0
+                revenue = d.get("revenue") or 0
+                if budget > 5_000_000 and revenue > 1_000_000:
+                    rois.append((revenue - budget) / budget * 100)
             if len(rois) >= 3:
-                results.append({
-                    "genre":       genre,
-                    "roi":         round(_median(rois), 1),
-                    "sample_size": len(rois),
-                })
-        return sorted(results, key=lambda x: x["roi"], reverse=True)
+                genre_rois[genre] = rois
+        return genre_rois
 
-    return _get_cached("roi_by_genre", fetch)
-
-
+    return _get_cached("roi_by_genre_v2", fetch)

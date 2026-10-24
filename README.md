@@ -28,6 +28,15 @@ Both movies and TV shows have dedicated detail pages with:
 - Top 5 cast members
 - Streaming platforms available in the US (via TMDB Watch Providers)
 - Watch Trailer and IMDb buttons
+- **More Like This** — content-based recommendations (see below)
+
+### 🤖 More Like This — content-based recommender
+Every movie page suggests 10 similar films with a short reason ("Dir. Christopher Nolan · time travel · Science Fiction").
+
+- **Features:** two TF-IDF blocks per film — the plot overview (unigrams + bigrams, English stop words removed) and tagged metadata tokens for genres, TMDB keywords, director and top-5 cast.
+- **Similarity:** each block is L2-normalised and scaled by √weight, so the score between two films is exactly `w_text · cos(overview) + (1 − w_text) · cos(metadata)`.
+- **Catalogue:** the ~5,000 most-voted films on TMDB, stored in `data/rec_corpus.json.gz` and fitted at first request (~2 s). Films outside the catalogue are vectorised on the fly from their TMDB metadata (cold start).
+- **Evaluation:** `evaluate_recommender.py` uses TMDB's behaviour-based recommendations as held-out ground truth, tunes `w_text` on half of a random sample and reports precision@10, recall@10 and hit-rate@10 on the other half against random and popularity baselines, plus catalogue coverage. The app reads the tuned weight from `data/rec_eval.json`.
 
 ### 🔎 Search
 Searches movies and TV shows simultaneously via TMDB. Results are re-ranked so exact title matches appear first, then partial matches, all sorted by popularity × rating so the most relevant result is always at the top.
@@ -37,9 +46,11 @@ Fetches live headlines from Deadline and The Hollywood Reporter via RSS. Each ar
 
 ### 📊 Dashboard
 Analytics section with three interactive Plotly charts:
-- **Genre Heatmap** — film counts per genre per decade (1970s–2020s), color-scaled by volume
-- **Budget vs Rating scatter** — popular films plotted by production budget against their TMDB rating, color-encoded by vote count
-- **Median ROI by Genre** — bar chart showing median return on investment per genre, based on budget vs. revenue data from TMDB; bars are color-coded (yellow = positive ROI, red = negative)
+- **Genre Heatmap** — each genre's share of the films released per decade (1970s–2020s), normalised by the decade total so the chart shows which genres grew rather than overall industry growth; a toggle switches to raw counts
+- **Budget vs Rating scatter** — popular films plotted by inflation-adjusted budget (US CPI-U, 2025 dollars, log scale) against their TMDB rating, color-encoded by vote count; reports Spearman's ρ with a permutation-test p-value and the R² of a log-linear fit
+- **Median ROI by Genre** — median return on investment per genre with 95% percentile-bootstrap confidence intervals, so overlapping genres are visibly indistinguishable; bars are color-coded (yellow = positive ROI, red = negative)
+
+The statistics (CPI adjustment, ranks, Spearman, permutation test, bootstrap) live in `analytics.py` as dependency-free, unit-tested functions.
 
 All charts are loaded asynchronously via AJAX to keep the initial page render fast.
 
@@ -54,6 +65,8 @@ All charts are loaded asynchronously via AJAX to keep the initial page render fa
 | External API | TMDB (The Movie Database) |
 | Data source | IMDb open datasets |
 | Charts | Plotly |
+| Recommender | scikit-learn (TF-IDF, cosine similarity) |
+| Tests | pytest |
 | Frontend | Bootstrap 5, custom CSS, Lucide icons |
 | Concurrency | `concurrent.futures.ThreadPoolExecutor` |
 
@@ -65,7 +78,13 @@ All charts are loaded asynchronously via AJAX to keep the initial page render fa
 project_V02/
 ├── app.py               # Flask routes
 ├── helpers.py           # TMDB API calls, RSS parser, data helpers
+├── analytics.py         # Dashboard statistics (CPI, Spearman, bootstrap…)
+├── recommender.py       # Content-based recommender (TF-IDF)
+├── build_rec_corpus.py  # Builds data/rec_corpus.json.gz from TMDB
+├── evaluate_recommender.py  # Offline evaluation + weight tuning
 ├── update_movies_db.py  # Script to refresh movies.db from IMDb dumps
+├── data/                # Recommender corpus and evaluation results
+├── tests/               # pytest suite (TMDB calls are mocked)
 ├── movies.db            # SQLite database (titles, years, ratings)
 ├── requirements.txt
 ├── static/              # Genre images (movies + TV shows)
@@ -126,6 +145,23 @@ python update_movies_db.py
 ```
 
 > Note: the `.tsv.gz` files are several hundred MB and are excluded from the repository via `.gitignore`.
+
+---
+
+## Building the recommender
+
+```bash
+python build_rec_corpus.py        # ~5,000 films, a few minutes
+python evaluate_recommender.py    # tunes w_text, writes data/rec_eval.json
+```
+
+Commit both files in `data/`. Without the corpus the app still runs; the "More Like This" section simply stays hidden.
+
+## Running the tests
+
+```bash
+pytest
+```
 
 ---
 
