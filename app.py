@@ -30,6 +30,10 @@ app = Flask(__name__)
 
 db = SQL("sqlite:///movies.db")
 
+import logging
+
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 @app.template_filter('format_budget')
 def format_budget(value):
     """Jinja2 filter: format a numeric budget as a comma-separated USD string."""
